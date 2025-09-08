@@ -35,14 +35,14 @@
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h1 class="h4 mb-0">Map</h1>
         <div class="d-flex gap-2">
-          <button id="zoomPins" class="btn btn-outline-secondary btn-sm">Zoom to pins</button>
+          <button id="fitPinsBtn" class="btn btn-outline-secondary btn-sm">Zoom to pins</button>
           {% if current_user and current_user.can_travel_edit %}
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newTripModal">New Location</button>
           {% endif %}
         </div>
       </div>
       <div id="map" class="rounded"></div>
-      <div class="text-muted small mt-2">Starts zoomed out; scroll to zoom. Click a pin’s title to open the trip.</div>
+      <div class="text-muted small mt-2">Starts zoomed out; scroll to zoom. Click a pin's title to open the trip.</div>
     </div>
   </div>
 
@@ -280,6 +280,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{{ url_for('static', filename='js/travel.js') }}"></script>
 <script>
 (function(){
   // Map
