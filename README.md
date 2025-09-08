@@ -253,4 +253,7 @@ pip install -r requirements.txt      # if deps changed
 ## 📜 License
 
 MIT — modify and self‑host freely.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9f528e6 (Initial commit)
