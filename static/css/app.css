@@ -2,30 +2,157 @@
 /* Global shared utilities and small site-wide tweaks */
 
 /* ---- Utilities ---- */
-.card-rounded { border-radius: 1rem; }
-.w-9rem { width: 9rem; }
-.w-18rem { max-width: 18rem; }
-.transition { transition: .15s ease-in-out; }
+.card-rounded {
+    border-radius: 1rem;
+}
+
+.w-9rem {
+    width: 9rem;
+}
+
+.w-18rem {
+    max-width: 18rem;
+}
+
+.transition {
+    transition: .15s ease-in-out;
+}
 
 /* ---- Comments (used in tracker/travel modals) ---- */
-.comment-item { padding: .5rem 0; border-top: 1px solid #f0f2f4; }
-.comment-item:first-child { border-top: 0; }
-.comment-meta { font-size: .9rem; }
+.comment-item {
+    padding: .5rem 0;
+    border-top: 1px solid #f0f2f4;
+}
+
+.comment-item:first-child {
+    border-top: 0;
+}
+
+.comment-meta {
+    font-size: .9rem;
+}
 
 /* ---- Long modal bodies ---- */
-.modal-body.scrollable { max-height: 70vh; overflow: auto; }
+.modal-body.scrollable {
+    max-height: 70vh;
+    overflow: auto;
+}
 
 /* ---- Image helpers ---- */
-img[loading="lazy"] { /* small safety to avoid flicker on slow networks */
-  background: #f8f9fa;
+img[loading="lazy"] {
+    /* small safety to avoid flicker on slow networks */
+    background: #f8f9fa;
 }
 
 /* ---- Buttons/links subtle hover (optional, minimal) ---- */
 a.btn:hover,
-button.btn:hover { filter: brightness(0.98); }
+button.btn:hover {
+    filter: brightness(0.98);
+}
 
 /* ---- Tables (slightly tighter) ---- */
-.table td, .table th { vertical-align: middle; }
+.table td,
+.table th {
+    vertical-align: middle;
+}
 
 /* ---- Small typography tweaks ---- */
-.small, .text-muted.small { font-size: .875rem; }
+.small,
+.text-muted.small {
+    font-size: .875rem;
+}
+
+/* ===== Comments UI (shared) ===== */
+.comments-ui .comments-composer {
+    /* sit flush with the card-body edges */
+    margin: -1rem -1rem .75rem;
+    padding: .75rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: .5rem .5rem 0 0;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
+}
+
+/* container for composer + list */
+.comments-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* important for flex children to size correctly */
+}
+
+/* only the list scrolls */
+.comments-scroll {
+    overflow: auto;
+    min-height: 0;
+}
+
+/* viewport-based max-height for the list so the modal keeps its natural size */
+@media (min-width: 992px) {
+    .comments-scroll {
+        max-height: calc(100vh - 300px);
+    }
+}
+
+@media (max-width: 991.98px) {
+    .comments-scroll {
+        max-height: calc(100vh - 360px);
+    }
+}
+
+/* comment cards & buttons */
+.comment-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: .75rem;
+    padding: .75rem 1rem;
+}
+
+.comment-card+.comment-card {
+    margin-top: .75rem;
+}
+
+.comment-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .5rem;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .25rem .5rem;
+    border: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: .5rem;
+}
+
+.btn-icon:disabled {
+    opacity: 1;
+}
+
+.btn-load-more {
+    background: #f1f3f5;
+    border: 1px solid #e9ecef;
+    color: #495057;
+    border-radius: .5rem;
+}
+
+/* Reaction + delete buttons */
+.btn-react{
+  display:inline-flex; align-items:center; gap:.25rem;
+  padding:.15rem .4rem; line-height:1; font-size:.9rem;
+  border:1px solid #e9ecef; background:#fff; border-radius:.5rem;
+}
+.btn-react .bi{ font-size:1rem; line-height:1; }
+.btn-react .count{ display:none; }
+.btn-react.has-count .count{ display:inline; }/* only show if >0 */
+.btn-react[aria-pressed="true"]{ background:#eef3ff; border-color:#cfe0ff; }
+
+.btn-delete{
+  border:0; background:transparent; color:#dc3545;
+  padding:0; line-height:1; font-size:1rem;
+}
+.btn-delete:hover{ color:#b02a37; }

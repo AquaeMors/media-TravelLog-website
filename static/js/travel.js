@@ -8,6 +8,17 @@
   const escapeHtml = (s) =>
     s ? s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) : '';
 
+  // ---------- Re-open a modal if we asked to keep it open ----------
+  (function reopenModalIfRequested() {
+    const id = sessionStorage.getItem('reopenModal');
+    if (!id) return;
+    sessionStorage.removeItem('reopenModal');
+    const el = document.getElementById(id);
+    if (el && window.bootstrap) {
+      bootstrap.Modal.getOrCreateInstance(el).show();
+    }
+  })();
+
   // ---------- Main Leaflet map ----------
   const mapEl = document.getElementById('map');
   if (!mapEl || typeof L === 'undefined') return;
@@ -21,17 +32,12 @@
   const markers = [];
 
   function addMarkerFromTrip(t) {
-    // Use a standard marker like your original inline script
     const m = L.marker([t.lat, t.lon]).addTo(map);
-
-    // Popup HTML matches your inline version so existing CSS/behavior keeps working
     const popupHtml = `<strong>${escapeHtml(t.title)}</strong><br>
       <a href="#" data-open="#trip${t.id}">Open trip</a>`;
     m.bindPopup(popupHtml);
 
-    // When popup opens, wire the "Open trip" link to Bootstrap modal
     m.on('popupopen', (e) => {
-      // Leaflet 1.9: get the DOM node of this popup
       const node = e.popup && e.popup.getElement ? e.popup.getElement() : null;
       if (!node) return;
       const link = node.querySelector('[data-open]');
@@ -50,25 +56,19 @@
     markers.push(m);
   }
 
-  // Load pins from API
   fetch('/api/trips', { headers: { 'Accept': 'application/json' } })
     .then((r) => r.json())
-    .then((list) => {
-      if (!Array.isArray(list)) return;
-      list.forEach(addMarkerFromTrip);
-    })
-    .catch(() => { /* ignore network errors for now */ });
+    .then((list) => { if (Array.isArray(list)) list.forEach(addMarkerFromTrip); })
+    .catch(() => { /* ignore */ });
 
-  // Zoom-to-pins button (support BOTH old id="zoomPins" and new id="fitPinsBtn")
-  const zoomBtn = document.getElementById('fitPinsBtn') || document.getElementById('zoomPins');
-  zoomBtn?.addEventListener('click', () => {
+  // Zoom-to-pins (supports old id="zoomPins" and new id="fitPinsBtn")
+  (document.getElementById('fitPinsBtn') || document.getElementById('zoomPins'))?.addEventListener('click', () => {
     if (!markers.length) return;
     const group = L.featureGroup(markers);
     map.fitBounds(group.getBounds().pad(0.2));
   });
 
   // ---------- "Show all photos" (legacy lazy-load behavior) ----------
-  // Matches your old HTML: button[data-show-all][data-trip-id] + .lazy-wrap blocks in the modal
   $$('[data-show-all]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.tripId;
@@ -131,7 +131,6 @@
   const newBox  = document.getElementById('addr-suggestions');
   if (newAddr && newBox) attachAutocomplete(newAddr, newBox);
 
-  // For any edit modals you may add later
   $$('[id^="addr-input-edit-"]').forEach((inp) => {
     const id  = inp.id.replace('addr-input-edit-', '');
     const box = document.getElementById('addr-suggestions-edit-' + id);
@@ -246,8 +245,17 @@
     });
   });
 
-  // ---------- (Optional) New gallery toggle variant ----------
-  // If you later switch to the "gallery-toggle" pattern, this supports it too.
+  // ---------- Persist modal open across full page reload on comment submit ----------
+  $$('form[action*="/travel/"][action$="/comment"]').forEach((form) => {
+    const modal = form.closest('.modal');
+    if (!modal) return;
+    form.addEventListener('submit', () => {
+      // store the modal id so we can re-open it after the redirect reloads the page
+      sessionStorage.setItem('reopenModal', modal.id);
+    });
+  });
+
+  // ---------- (Optional) Gallery toggle variant ----------
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.gallery-toggle');
     if (!btn) return;
@@ -255,7 +263,7 @@
     const wrap = document.querySelector(target);
     if (!wrap) return;
 
-    const isCollapsed = wrap.classList.toggle('collapsed'); // toggled; true if now collapsed
+    const isCollapsed = wrap.classList.toggle('collapsed');
     const expanded = !isCollapsed;
 
     btn.setAttribute('aria-expanded', String(expanded));

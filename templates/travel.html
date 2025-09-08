@@ -24,7 +24,6 @@
 
 <h2 class="h5 mb-3">T&R Travel Log</h2>
 
-<!-- Trip cards -->
 <div class="row g-3">
   {% for t in trips %}
     {% set cover = (t.photos[0].thumb_path if t.photos) %}
@@ -48,7 +47,7 @@
       </div>
     </div>
 
-    <!-- Trip Modal (details + comments) -->
+    <!-- Trip Modal -->
     <div class="modal fade" id="trip{{ t.id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
@@ -64,8 +63,8 @@
             <div class="row g-3">
               <!-- LEFT -->
               <div class="col-lg-7">
-                <div class="card card-rounded h-100">
-                  <div class="card-body">
+                <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
+                  <div class="card-body flex-grow-1 overflow-auto">
                     <h6 class="text-muted">Details</h6>
                     <dl class="row mb-3">
                       <dt class="col-4">Added</dt><dd class="col-8">{{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
@@ -109,31 +108,65 @@
                     <span>Comments</span>
                     <span class="badge text-bg-secondary">{{ t.user_comments|length }}</span>
                   </div>
-                  <div class="card-body">
-                    <form class="mb-3" method="post" action="/travel/{{ t.id }}/comment">
-                      <label class="form-label">Add a comment as <strong>{{ current_user.username }}</strong></label>
-                      <textarea class="form-control mb-2" name="body" rows="2" maxlength="2000" placeholder="Share a thought…" required></textarea>
-                      <div class="text-end"><button class="btn btn-sm btn-primary">Post</button></div>
-                    </form>
 
-                    {% if t.user_comments %}
-                      {% for c in t.user_comments|sort(attribute='created_at', reverse=True) %}
-                        <div class="py-2 border-top">
-                          <div class="d-flex justify-content-between">
-                            <div class="small"><strong>{{ c.author }}</strong> <span class="text-muted">• {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
-                            {% if current_user and (current_user.id == c.user_id or current_user.can_travel_edit) %}
-                              <form method="post" action="/travel/comment/{{ c.id }}/delete" onsubmit="return confirm('Delete this comment?');">
-                                <button class="btn btn-link btn-sm text-danger p-0">Delete</button>
-                              </form>
-                            {% endif %}
+                  <div class="card-body comments-panel">
+                    <div class="comments-ui">
+                      <!-- Composer (flush to edges, fixed at top of panel) -->
+                      <form class="comments-composer" method="post" action="/travel/{{ t.id }}/comment" data-keep-modal>
+                        <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username }}</strong></label>
+                        <textarea class="form-control" name="body" rows="3" maxlength="2000" placeholder="Share a thought…" required></textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                          <div class="comments-toolbar">
+                            <button type="button" class="btn-tool" title="Bold" disabled><i class="bi bi-type-bold"></i></button>
+                            <button type="button" class="btn-tool" title="Italic" disabled><i class="bi bi-type-italic"></i></button>
+                            <button type="button" class="btn-tool" title="Link" disabled><i class="bi bi-link-45deg"></i></button>
                           </div>
-                          <div class="mt-1">{{ c.body }}</div>
+                          <button class="btn btn-sm btn-primary">Comment</button>
                         </div>
-                      {% endfor %}
-                    {% else %}
-                      <div class="text-muted">No comments yet.</div>
-                    {% endif %}
-                  </div>
+                      </form>
+                    </div>
+
+                    <!-- Only this list scrolls -->
+                    <div class="comments-scroll">
+                      {% if t.user_comments %}
+                        {% for c in t.user_comments|sort(attribute='created_at', reverse=True) %}
+                          <article class="comment-card">
+                            <div class="d-flex justify-content-between">
+                              <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
+                              {% if current_user and (current_user.id == c.user_id or current_user.can_travel_edit) %}
+                                <form method="post" action="/travel/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal data-confirm="Delete this comment?">
+                                  <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                              {% endif %}
+                            </div>
+                            <div class="mt-2">{{ c.body }}</div>
+                            <div class="comment-footer">
+                              <div class="d-flex gap-2">
+                                <button type="button"
+                                        class="btn btn-react {{ 'has-count' if c.likes>0 }}"
+                                        data-react="like" data-kind="trip" data-comment-id="{{ c.id }}"
+                                        aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
+                                  <i class="bi bi-arrow-up"></i>
+                                  <span class="count">{{ c.likes }}</span>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
+                                        data-react="dislike" data-kind="trip" data-comment-id="{{ c.id }}"
+                                        aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
+                                  <i class="bi bi-arrow-down"></i>
+                                  <span class="count">{{ c.dislikes }}</span>
+                                </button>
+                              </div>
+                              <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                          </article>
+                        {% endfor %}
+                        <div class="mt-3"><button type="button" class="btn btn-load-more w-100" disabled>Load More</button></div>
+                      {% else %}
+                        <div class="text-muted">No comments yet.</div>
+                      {% endif %}
+                    </div><!-- /.comments-scroll -->
+                  </div><!-- /.card-body -->
                 </div>
               </div>
             </div><!-- /row -->
@@ -147,7 +180,7 @@
     </div>
 
     {% if current_user and current_user.can_travel_edit %}
-    <!-- Edit Trip Modal (with mini picker hooks) -->
+    <!-- Edit Trip Modal -->
     <div class="modal fade" id="editTrip{{ t.id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -165,9 +198,6 @@
                 <div class="col-md-6">
                   <label class="form-label">Address</label>
                   <input name="address" class="form-control" value="{{ t.address }}" required>
-                </div>
-                <div class="col-12">
-                  <div id="picker-{{ t.id }}" class="picker rounded border"></div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Latitude (optional)</label>
@@ -200,7 +230,7 @@
 </div>
 
 {% if current_user and current_user.can_travel_edit %}
-<!-- New Trip Modal (with address autocomplete + picker hooks) -->
+<!-- New Trip Modal -->
 <div class="modal fade" id="newLocationModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
@@ -215,24 +245,17 @@
               <label class="form-label">Title/Name</label>
               <input name="title" class="form-control" required>
             </div>
-            <div class="col-md-6 addr-container">
+            <div class="col-md-6">
               <label class="form-label">Address</label>
               <input id="addr-input" name="address" class="form-control" placeholder="Start typing address…" required>
-              <div id="addr-suggestions" class="list-group position-absolute d-none"></div>
-            </div>
-            <div class="col-12">
-              <div id="newloc-map" class="picker rounded border"></div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Latitude (optional)</label>
-              <input id="new-lat" name="lat" class="form-control" placeholder="">
+              <input id="new-lat" name="lat" class="form-control">
             </div>
             <div class="col-md-6">
               <label class="form-label">Longitude (optional)</label>
-              <input id="new-lon" name="lon" class="form-control" placeholder="">
-            </div>
-            <div class="col-12">
-              <button type="button" id="geocode-new" class="btn btn-outline-secondary btn-sm">Geocode address into map</button>
+              <input id="new-lon" name="lon" class="form-control">
             </div>
             <div class="col-12">
               <label class="form-label">Notes (optional)</label>
