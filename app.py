@@ -21,7 +21,6 @@ BASE_DIR = pathlib.Path(__file__).resolve().parent
 
 # Build a cross-platform SQLite file URI for local dev
 def _local_sqlite_uri(filename: str) -> str:
-    # SQLAlchemy wants forward slashes in the URI even on Windows
     p = (BASE_DIR / filename).resolve()
     return "sqlite:///" + str(p).replace("\\", "/")
 
@@ -43,10 +42,7 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = not bool(os.environ.get("COOKIE_INSECURE"))
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# Uploads directory:
-# 1) honor env var UPLOAD_ROOT
-# 2) else if /opt/media/uploads is available, use it (server)
-# 3) else fall back to local ./uploads
+# Uploads directory (env > /opt/media/uploads > ./uploads)
 _upload_root_env = os.environ.get("UPLOAD_ROOT")
 if _upload_root_env:
     upload_root = _upload_root_env
@@ -66,9 +62,7 @@ db = SQLAlchemy(app)
 
 MEDIA_TYPES = ["book", "movie", "show", "anime", "manga", "manhwa", "game", "other"]
 
-# Default statuses for non-serial media
 DEFAULT_STATUSES = ["current", "waiting", "finished"]
-# Serial statuses for manga/manhwa
 SERIAL_TYPES = ["manga", "manhwa"]
 SERIAL_STATUSES = ["ongoing", "completed", "hiatus", "canceled"]
 
@@ -142,6 +136,19 @@ class ItemComment(db.Model):
     body = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+# Reactions for comments across both features.
+# 'kind' is 'trip' or 'item' to avoid id collision between tables.
+class CommentReaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(10), nullable=False, index=True)       # 'trip' | 'item'
+    comment_id = db.Column(db.Integer, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    value = db.Column(db.Integer, nullable=False)                     # 1=like, -1=dislike
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (
+        db.UniqueConstraint("kind", "comment_id", "user_id", name="uq_reaction_one_per_user"),
+    )
+
 class RegistrationRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False, index=True)
@@ -183,7 +190,7 @@ with app.app_context():
     if "chapter_total" not in cols_item:
         db.session.execute(text("ALTER TABLE item ADD COLUMN chapter_total INTEGER"))
 
-    # registration_request table (older versions)
+    # registration_request older versions
     cols_rr = [r[1] for r in db.session.execute(text("PRAGMA table_info(registration_request)")).fetchall()]
     if cols_rr:
         if "decided_at" not in cols_rr:
@@ -298,7 +305,7 @@ def geocode_address(addr: str):
         url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({
             "format": "json", "q": addr, "limit": 1
         })
-        req = urllib.request.Request(url, headers={"User-Agent": "TR-TravelLog/1.0 (+https://tinychuck.serv.nu)"})
+        req = urllib.request.Request(url, headers={"User-Agent": "TR-TravelLog/1.0"})
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             if isinstance(data, list) and data:
@@ -320,6 +327,37 @@ def make_thumbnail(src_path: pathlib.Path, thumb_path: pathlib.Path, max_px: int
             bg.paste(im, mask=im.split()[3])
             im = bg
         im.save(thumb_path, "JPEG", quality=quality, optimize=True, progressive=True)
+
+# ---------- Reactions: helpers ----------
+def hydrate_comment_reactions(comments, user_id, kind: str):
+    """Attach likes/dislikes and current user's reaction to each comment."""
+    if not comments:
+        return
+    ids = [c.id for c in comments]
+    # all reactions for these comments
+    all_rows = (CommentReaction.query
+                .filter(CommentReaction.kind == kind,
+                        CommentReaction.comment_id.in_(ids))
+                .all())
+    counts = {}
+    for r in all_rows:
+        likes, dislikes = counts.get(r.comment_id, (0, 0))
+        if r.value == 1: likes += 1
+        elif r.value == -1: dislikes += 1
+        counts[r.comment_id] = (likes, dislikes)
+
+    mine_rows = []
+    if user_id:
+        mine_rows = (CommentReaction.query
+                     .filter(CommentReaction.kind == kind,
+                             CommentReaction.user_id == user_id,
+                             CommentReaction.comment_id.in_(ids))
+                     .all())
+    mine = {r.comment_id: ("like" if r.value == 1 else "dislike") for r in mine_rows}
+
+    for c in comments:
+        c.likes, c.dislikes = counts.get(c.id, (0, 0))
+        c.user_reaction = mine.get(c.id)
 
 # ---------------- Routes ----------------
 @app.get("/")
@@ -507,7 +545,7 @@ def serve_upload(subpath):
 @app.route("/tracker", methods=["GET", "POST"])
 @login_required
 def tracker():
-    # --- Create on POST ---
+    # Create on POST
     if request.method == "POST":
         media_type = request.form["media_type"]
 
@@ -538,7 +576,7 @@ def tracker():
         db.session.commit()
         return redirect(url_for("tracker", type=media_type) if media_type in MEDIA_TYPES else url_for("tracker"))
 
-    # --- Menu-first UX ---
+    # Menu-first UX
     type_filter = (request.args.get("type") or "").lower()
     valid_type = type_filter in MEDIA_TYPES
 
@@ -549,7 +587,6 @@ def tracker():
     }
 
     if not valid_type:
-        # Render menu only
         return render_template(
             "tracker.html",
             mode="menu",
@@ -562,14 +599,14 @@ def tracker():
             q=""
         )
 
-    # --- List screen for chosen type ---
+    # List screen for chosen type
     q = (request.args.get("q") or "").strip()
     status_filter = (request.args.get("status") or "all").lower()
 
     if type_filter in ("manga", "manhwa"):
-        status_options = SERIAL_STATUSES[:]  # ongoing/completed/hiatus/canceled
+        status_options = SERIAL_STATUSES[:]
     else:
-        status_options = DEFAULT_STATUSES[:] # current/waiting/finished
+        status_options = DEFAULT_STATUSES[:]
 
     if status_filter not in status_options and status_filter != "all":
         status_filter = "all"
@@ -585,6 +622,11 @@ def tracker():
             .order_by(Item.added_at.desc())
             .options(subqueryload(Item.comments))
             .all())
+
+    # hydrate reactions for each item's comments
+    uid = session.get("user_id")
+    for r in rows:
+        hydrate_comment_reactions(r.comments, uid, "item")
 
     return render_template(
         "tracker.html",
@@ -637,7 +679,6 @@ def tracker_update(item_id):
 
     db.session.commit()
     flash(f"Updated '{item.title}'.", "success")
-    # Keep the user on the same type view
     return redirect(url_for("tracker", type=item.media_type) + f"#item{item.id}")
 
 # Item comments
@@ -685,6 +726,10 @@ def travel():
         .order_by(Trip.created_at.desc())
         .all()
     )
+    # hydrate reactions on comments
+    uid = session.get("user_id")
+    for t in trips:
+        hydrate_comment_reactions(t.user_comments, uid, "trip")
     return render_template("travel.html", trips=trips)
 
 @app.get("/api/trips")
@@ -858,6 +903,58 @@ def travel_comment_delete(comment_id):
     flash("Comment deleted.", "success")
     return redirect(url_for("travel") + f"#trip{trip_id}")
 
+# ----- Reactions API (like/dislike) -----
+@app.post("/api/comments/<kind>/<int:comment_id>/react")
+@login_required
+def api_comment_react(kind, comment_id):
+    kind = (kind or "").lower()
+    if kind not in ("trip", "item"):
+        return jsonify(ok=False, error="bad kind"), 400
+
+    # must exist
+    target = Comment if kind == "trip" else ItemComment
+    if not target.query.get(comment_id):
+        return jsonify(ok=False, error="not found"), 404
+
+    uid = session.get("user_id")
+    if not uid:
+        return jsonify(ok=False, error="auth"), 401
+
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "").lower()
+    if action not in ("like", "dislike"):
+        return jsonify(ok=False, error="bad action"), 400
+    val = 1 if action == "like" else -1
+
+    rec = (CommentReaction.query
+           .filter_by(kind=kind, comment_id=comment_id, user_id=uid)
+           .first())
+
+    if rec is None:
+        rec = CommentReaction(kind=kind, comment_id=comment_id, user_id=uid, value=val)
+        db.session.add(rec)
+        user_reaction = val
+    elif rec.value == val:
+        db.session.delete(rec)
+        user_reaction = 0
+    else:
+        rec.value = val
+        user_reaction = val
+
+    db.session.commit()
+
+    likes = (db.session.query(func.count(CommentReaction.id))
+             .filter_by(kind=kind, comment_id=comment_id, value=1).scalar()) or 0
+    dislikes = (db.session.query(func.count(CommentReaction.id))
+                .filter_by(kind=kind, comment_id=comment_id, value=-1).scalar()) or 0
+
+    return jsonify(
+        ok=True,
+        likes=int(likes),
+        dislikes=int(dislikes),
+        user_reaction=("like" if user_reaction == 1 else "dislike" if user_reaction == -1 else None)
+    )
+
 # ----- 413 handler -----
 @app.errorhandler(RequestEntityTooLarge)
 def handle_413(e):
@@ -869,5 +966,4 @@ def healthz():
     return {"ok": True}, 200
 
 if __name__ == "__main__":
-    # Local dev: bind to localhost
     app.run(host="127.0.0.1", port=8000, debug=False)

@@ -13,14 +13,8 @@
     </div>
 
     {% set ICONS = {
-      'book': 'book',
-      'movie': 'film',
-      'show': 'tv',
-      'anime': 'collection-play',
-      'manga': 'journals',
-      'manhwa': 'journals',
-      'game': 'controller',
-      'other': 'list'
+      'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+      'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
     } %}
 
     <div class="row g-3">
@@ -29,9 +23,7 @@
           <a class="text-decoration-none text-reset" href="/tracker?type={{ t }}">
             <div class="card card-rounded shadow-sm type-card transition">
               <div class="card-body d-flex align-items-center gap-3">
-                <div class="type-icon">
-                  <i class="bi bi-{{ ICONS.get(t, 'list') }}" aria-hidden="true"></i>
-                </div>
+                <div class="type-icon"><i class="bi bi-{{ ICONS.get(t, 'list') }}" aria-hidden="true"></i></div>
                 <div>
                   <div class="fw-semibold text-capitalize">{{ t }}</div>
                   <div class="text-muted small">{{ type_counts[t] }} item{{ '' if type_counts[t]==1 else 's' }}</div>
@@ -75,35 +67,25 @@
       <table class="table table-hover align-middle">
         <thead class="table-light">
           <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Score</th>
-            <th>Chapters</th>
-            <th>Tags</th>
-            <th>Added</th>
-            <th style="width:1%;">Actions</th>
+            <th>Title</th><th>Status</th><th>Score</th><th>Chapters</th><th>Tags</th><th>Added</th><th style="width:1%;">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% if rows %}
             {% for r in rows %}
               <tr>
-                <td class="fw-semibold">
-                  <a href="#" data-bs-toggle="modal" data-bs-target="#item{{ r.id }}">{{ r.title }}</a>
-                </td>
+                <td class="fw-semibold"><a href="#" data-bs-toggle="modal" data-bs-target="#item{{ r.id }}">{{ r.title }}</a></td>
                 <td>{{ r.status.title() }}</td>
                 <td>{{ r.score if r.score is not none else '—' }}</td>
                 <td>
                   {% if r.chapter_current is not none or r.chapter_total is not none %}
-                    {{ r.chapter_current if r.chapter_current is not none else '?' }}
-                    {% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
+                    {{ r.chapter_current if r.chapter_current is not none else '?' }}{% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
                   {% else %}—{% endif %}
                 </td>
                 <td class="text-muted">{{ r.tags or '' }}</td>
                 <td class="text-muted">{{ r.added_at.strftime('%Y-%m-%d') }}</td>
                 <td class="text-end text-nowrap">
-                  <button class="btn btn-sm btn-outline-secondary"
-                          data-bs-toggle="modal" data-bs-target="#itemEdit{{ r.id }}">Edit</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemEdit{{ r.id }}">Edit</button>
                 </td>
               </tr>
             {% endfor %}
@@ -142,7 +124,6 @@
 
                 <div class="col-md-3">
                   <label class="form-label">Status</label>
-                  <!-- Pre-fill with server status list for current type -->
                   <select id="add-status" name="status" class="form-select">
                     {% for s in STATUS_OPTIONS %}
                       <option value="{{ s }}">{{ s.title() }}</option>
@@ -165,7 +146,6 @@
                   <input name="tags" class="form-control" placeholder="Comma-separated">
                 </div>
 
-                <!-- Chapters (conditional via JS) -->
                 <div id="chapter-fields" class="row g-2 mt-1 d-none">
                   <div class="col-auto">
                     <label class="form-label">Chapter (current)</label>
@@ -202,8 +182,7 @@
             <div>
               <h5 class="modal-title">{{ r.title }}</h5>
               <div class="text-muted small">
-                {{ type_filter.title() }} • Status: {{ r.status.title() }}
-                {% if r.score is not none %} • Score: {{ r.score }}{% endif %}
+                {{ type_filter.title() }} • Status: {{ r.status.title() }}{% if r.score is not none %} • Score: {{ r.score }}{% endif %}
               </div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -212,8 +191,8 @@
           <div class="modal-body">
             <div class="row g-3">
               <div class="col-md-6">
-                <div class="card card-rounded h-100">
-                  <div class="card-body">
+                <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
+                  <div class="card-body flex-grow-1 overflow-auto">
                     <h6 class="text-muted">Details</h6>
                     <dl class="row mb-0">
                       <dt class="col-5">Status</dt><dd class="col-7">{{ r.status.title() }}</dd>
@@ -241,38 +220,63 @@
                     <span>Comments</span>
                     <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
                   </div>
-                  <div class="card-body">
-                    <form class="mb-3" method="post" action="/tracker/{{ r.id }}/comment">
-                      <label class="form-label">Add a comment as <strong>{{ current_user.username }}</strong></label>
-                      <textarea class="form-control mb-2" name="body" rows="2" maxlength="2000" placeholder="Share a thought…" required></textarea>
-                      <div class="text-end">
-                        <button class="btn btn-sm btn-primary">Post</button>
-                      </div>
-                    </form>
 
-                    {% if r.comments %}
-                      <div class="comments-list">
+                  <div class="card-body comments-panel">
+                    <div class="comments-ui">
+                      <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment" data-keep-modal>
+                        <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username }}</strong></label>
+                        <textarea class="form-control" name="body" rows="3" maxlength="2000" placeholder="Share a thought…" required></textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                          <div class="comments-toolbar">
+                            <button type="button" class="btn-tool" title="Bold" disabled><i class="bi bi-type-bold"></i></button>
+                            <button type="button" class="btn-tool" title="Italic" disabled><i class="bi bi-type-italic"></i></button>
+                            <button type="button" class="btn-tool" title="Link" disabled><i class="bi bi-link-45deg"></i></button>
+                          </div>
+                          <button class="btn btn-sm btn-primary">Comment</button>
+                        </div>
+                      </form>
+                    </div>
+
+                    <div class="comments-scroll">
+                      {% if r.comments %}
                         {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
-                          <div class="comment-item">
+                          <article class="comment-card">
                             <div class="d-flex justify-content-between">
-                              <div class="comment-meta">
-                                <strong>{{ c.author }}</strong>
-                                <span class="text-muted small">• {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                              </div>
+                              <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
                               {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
-                                <form method="post" action="/tracker/comment/{{ c.id }}/delete" onsubmit="return confirm('Delete this comment?');">
-                                  <button class="btn btn-link btn-sm text-danger p-0">Delete</button>
+                                <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal data-confirm="Delete this comment?">
+                                  <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
                                 </form>
                               {% endif %}
                             </div>
-                            <div class="mt-1">{{ c.body }}</div>
-                          </div>
+                            <div class="mt-2">{{ c.body }}</div>
+                            <div class="comment-footer">
+                              <div class="d-flex gap-2">
+                                <button type="button"
+                                        class="btn btn-react {{ 'has-count' if c.likes>0 }}"
+                                        data-react="like" data-kind="item" data-comment-id="{{ c.id }}"
+                                        aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
+                                  <i class="bi bi-arrow-up"></i>
+                                  <span class="count">{{ c.likes }}</span>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
+                                        data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
+                                        aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
+                                  <i class="bi bi-arrow-down"></i>
+                                  <span class="count">{{ c.dislikes }}</span>
+                                </button>
+                              </div>
+                              <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                          </article>
                         {% endfor %}
-                      </div>
-                    {% else %}
-                      <div class="text-muted">No comments yet.</div>
-                    {% endif %}
-                  </div>
+                        <div class="mt-3"><button type="button" class="btn btn-load-more w-100" disabled>Load More</button></div>
+                      {% else %}
+                        <div class="text-muted">No comments yet.</div>
+                      {% endif %}
+                    </div><!-- /.comments-scroll -->
+                  </div><!-- /.card-body -->
                 </div>
               </div>
             </div><!-- /row -->
@@ -285,7 +289,7 @@
       </div>
     </div>
 
-    <!-- Edit Item Modal (with data- hooks for external JS) -->
+    <!-- Edit Item Modal -->
     <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -335,7 +339,6 @@
                   <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
                 </div>
 
-                <!-- Chapters (shown/hidden by JS if type supports it) -->
                 <div id="edit-chapter-fields-{{ r.id }}" class="row g-2 mt-1 d-none">
                   <div class="col-auto">
                     <label class="form-label">Chapter (current)</label>
