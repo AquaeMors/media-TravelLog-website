@@ -1,0 +1,31 @@
+.app-card {
+  border-radius: 1rem;
+}
+
+/* Taller cover so more of the image is visible */
+.card-cover {
+  height: 220px;            /* was 120px */
+  object-fit: cover;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+/* Keep card body tight */
+.app-card .card-body {
+  padding: 0.75rem 1rem;
+}
+
+.app-card .card-title {
+  margin-bottom: .25rem;
+  font-size: 1.05rem;
+}
+
+/* Responsive tuning */
+@media (max-width: 992px) {   /* tablets */
+  .card-cover { height: 180px; }
+}
+
+@media (max-width: 576px) {   /* phones */
+  .card-cover { height: 150px; }
+}
+

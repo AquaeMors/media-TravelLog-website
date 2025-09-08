@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Media Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .card-rounded{border-radius:1rem}
+    .w-9rem{width:9rem}
+    .w-18rem{max-width:18rem}
+    .modal-body.scrollable { max-height: 70vh; overflow: auto; }
+    .comment-item { padding:.5rem 0; border-top:1px solid #f0f2f4; }
+    .comment-item:first-child { border-top:0; }
+    .comment-meta { font-size:.9rem; }
+    .type-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important; }
+    .type-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display:flex; align-items:center; justify-content:center;
+      background:#f1f3f5; font-weight:700;
+    }
+    .type-icon i { font-size: 1.4rem; line-height: 1; }
+  </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar bg-white border-bottom">
+  <div class="container">
+    <a class="navbar-brand fw-semibold" href="/home">Home</a>
+    <div class="d-flex align-items-center gap-2">
+      {% if current_user and current_user.can_approve_users %}
+        <a class="btn btn-outline-secondary btn-sm" href="/admin/requests">User Requests</a>
+      {% endif %}
+      {% if current_user %}
+        <span class="text-muted small">Signed in as <strong>{{ current_user.username }}</strong></span>
+      {% endif %}
+      <form method="post" action="/logout" class="m-0 ms-2">
+        <button class="btn btn-outline-danger btn-sm">Logout</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+
+  {% if mode == 'menu' %}
+    <!-- Menu-only screen -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h1 class="h4 mb-0">Pick a media type</h1>
+    </div>
+
+    {% set ICONS = {
+      'book': 'book',
+      'movie': 'film',
+      'show': 'tv',
+      'anime': 'collection-play',
+      'manga': 'journals',
+      'manhwa': 'journals',
+      'game': 'controller',
+      'other': 'list'
+    } %}
+
+    <div class="row g-3">
+      {% for t in MEDIA_TYPES %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <a class="text-decoration-none text-reset" href="/tracker?type={{ t }}">
+            <div class="card card-rounded shadow-sm type-card transition">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="type-icon">
+                  <i class="bi bi-{{ ICONS.get(t, 'list') }}" aria-hidden="true"></i>
+                </div>
+                <div>
+                  <div class="fw-semibold text-capitalize">{{ t }}</div>
+                  <div class="text-muted small">{{ type_counts[t] }} item{{ '' if type_counts[t]==1 else 's' }}</div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <!-- List screen for the chosen type -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h1 class="h4 mb-0">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
+        <a href="/tracker" class="small">Change type</a>
+      </div>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
+    </div>
+
+    <!-- Filters (type removed; status/search only) -->
+    <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
+      <input type="hidden" name="type" value="{{ type_filter }}">
+      <div class="col-auto">
+        <select id="filter-status" class="form-select form-select-sm" name="status">
+          <option value="all" {% if status_filter=='all' %}selected{% endif %}>All statuses</option>
+          {% for s in STATUS_OPTIONS %}
+            <option value="{{s}}" {% if status_filter==s %}selected{% endif %}>{{ s.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}" placeholder="Search title/tags/notes">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-primary btn-sm">Filter</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Score</th>
+            <th>Chapters</th>
+            <th>Tags</th>
+            <th>Added</th>
+            <th style="width:1%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rows %}
+            {% for r in rows %}
+              <tr>
+                <td class="fw-semibold">
+                  <a href="#" data-bs-toggle="modal" data-bs-target="#item{{ r.id }}">{{ r.title }}</a>
+                </td>
+                <td>{{ r.status.title() }}</td>
+                <td>{{ r.score if r.score is not none else '—' }}</td>
+                <td>
+                  {% if r.chapter_current is not none or r.chapter_total is not none %}
+                    {{ r.chapter_current if r.chapter_current is not none else '?' }}
+                    {% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-muted">{{ r.tags or '' }}</td>
+                <td class="text-muted">{{ r.added_at.strftime('%Y-%m-%d') }}</td>
+                <td class="text-end text-nowrap">
+                  <button class="btn btn-sm btn-outline-secondary"
+                          data-bs-toggle="modal" data-bs-target="#itemEdit{{ r.id }}">Edit</button>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="text-muted">No {{ type_filter }} yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- New Item Modal -->
+    <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="/tracker">
+            <div class="modal-header">
+              <h5 class="modal-title">Add New <span class="text-capitalize">{{ type_filter }}</span></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control" required>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Type</label>
+                  <select id="add-media-type" name="media_type" class="form-select">
+                    {% for t in MEDIA_TYPES %}
+                      <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Status</label>
+                  <select id="add-status" name="status" class="form-select"></select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Score</label>
+                  <select name="score" class="form-select">
+                    <option value="">0-10</option>
+                    {% for n in range(0,11) %}
+                      <option value="{{n}}">{{n}}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-9">
+                  <label class="form-label">Tags/Genres</label>
+                  <input name="tags" class="form-control" placeholder="Comma-separated">
+                </div>
+
+                <!-- Chapters (conditional) -->
+                <div id="chapter-fields" class="row g-2 mt-1 d-none">
+                  <div class="col-auto">
+                    <label class="form-label">Chapter (current)</label>
+                    <input type="number" min="0" name="chapter_current" class="form-control w-9rem" placeholder="#">
+                  </div>
+                  <div class="col-auto">
+                    <label class="form-label">Total chapters (optional)</label>
+                    <input type="number" min="0" name="chapter_total" class="form-control w-9rem" placeholder="Total">
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Notes (optional)</label>
+                  <textarea name="notes" class="form-control" rows="3"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary">Add</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Detail Modals (dual-column: details | comments) -->
+    {% for r in rows %}
+    <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title">{{ r.title }}</h5>
+              <div class="text-muted small">
+                {{ type_filter.title() }} • Status: {{ r.status.title() }}
+                {% if r.score is not none %} • Score: {{ r.score }}{% endif %}
+              </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-3">
+              <!-- LEFT: Details -->
+              <div class="col-md-6">
+                <div class="card card-rounded h-100">
+                  <div class="card-body">
+                    <h6 class="text-muted">Details</h6>
+                    <dl class="row mb-0">
+                      <dt class="col-5">Status</dt><dd class="col-7">{{ r.status.title() }}</dd>
+                      <dt class="col-5">Score</dt><dd class="col-7">{{ r.score if r.score is not none else '—' }}</dd>
+                      <dt class="col-5">Chapters</dt>
+                      <dd class="col-7">
+                        {% if r.chapter_current is not none or r.chapter_total is not none %}
+                          {{ r.chapter_current if r.chapter_current is not none else '?' }}{% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
+                        {% else %}—{% endif %}
+                      </dd>
+                      <dt class="col-5">Tags</dt><dd class="col-7">{{ r.tags or '—' }}</dd>
+                      <dt class="col-5">Added</dt><dd class="col-7">{{ r.added_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                    </dl>
+                    {% if r.notes %}
+                      <hr>
+                      <div><strong>Notes</strong><div class="mt-1">{{ r.notes }}</div></div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT: Comments -->
+              <div class="col-md-6">
+                <div class="card card-rounded h-100">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Comments</span>
+                    <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
+                  </div>
+                  <div class="card-body">
+                    <form class="mb-3" method="post" action="/tracker/{{ r.id }}/comment">
+                      <label class="form-label">Add a comment as <strong>{{ current_user.username }}</strong></label>
+                      <textarea class="form-control mb-2" name="body" rows="2" maxlength="2000" placeholder="Share a thought…" required></textarea>
+                      <div class="text-end">
+                        <button class="btn btn-sm btn-primary">Post</button>
+                      </div>
+                    </form>
+
+                    {% if r.comments %}
+                      <div class="comments-list">
+                        {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
+                          <div class="comment-item">
+                            <div class="d-flex justify-content-between">
+                              <div class="comment-meta">
+                                <strong>{{ c.author }}</strong>
+                                <span class="text-muted small">• {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                              </div>
+                              {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
+                                <form method="post" action="/tracker/comment/{{ c.id }}/delete" onsubmit="return confirm('Delete this comment?');">
+                                  <button class="btn btn-link btn-sm text-danger p-0">Delete</button>
+                                </form>
+                              {% endif %}
+                            </div>
+                            <div class="mt-1">{{ c.body }}</div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <div class="text-muted">No comments yet.</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div><!-- /row -->
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="/tracker/{{ r.id }}/update">
+            <div class="modal-header">
+              <h5 class="modal-title">Edit: {{ r.title }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control" value="{{ r.title }}" required>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Type</label>
+                  <select id="edit-media-type-{{ r.id }}" name="media_type" class="form-select">
+                    {% for t in MEDIA_TYPES %}
+                      <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Status</label>
+                  <select id="edit-status-{{ r.id }}" name="status" class="form-select"></select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Score</label>
+                  <select name="score" class="form-select">
+                    <option value="">—</option>
+                    {% for n in range(0,11) %}
+                      <option value="{{n}}" {% if r.score is not none and r.score==n %}selected{% endif %}>{{n}}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <div class="col-md-9">
+                  <label class="form-label">Tags/Genres</label>
+                  <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
+                </div>
+
+                <!-- Chapters (conditional) -->
+                <div id="edit-chapter-fields-{{ r.id }}" class="row g-2 mt-1 d-none">
+                  <div class="col-auto">
+                    <label class="form-label">Chapter (current)</label>
+                    <input type="number" min="0" name="chapter_current" class="form-control w-9rem"
+                           value="{{ r.chapter_current if r.chapter_current is not none }}">
+                  </div>
+                  <div class="col-auto">
+                    <label class="form-label">Total chapters (optional)</label>
+                    <input type="number" min="0" name="chapter_total" class="form-control w-9rem"
+                           value="{{ r.chapter_total if r.chapter_total is not none }}">
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Notes (optional)</label>
+                  <textarea name="notes" class="form-control" rows="3">{{ r.notes or '' }}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary">Save changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+</div> <!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function(){
+  // Only on list mode do we bind filters + dynamic fields
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    document.getElementById('filter-status')?.addEventListener('change', () => filterForm.submit());
+  }
+
+  // Dynamic status + chapter fields (New modal)
+  const typeSel = document.getElementById('add-media-type');
+  const statusSel = document.getElementById('add-status');
+  const chRow = document.getElementById('chapter-fields');
+  const DEFAULT_STATUSES = ["current","waiting","finished"];
+  const SERIAL_STATUSES  = ["ongoing","completed","hiatus","canceled"];
+
+  function fillStatusOptions(selectEl, list, selected){
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    list.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
+      if (selected && selected === v) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+  function toggleForType_New() {
+    if (!typeSel) return;
+    const v = (typeSel.value || '').toLowerCase();
+    const serial = ['manga','manhwa'].includes(v);
+    fillStatusOptions(statusSel, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, null);
+    if (chRow) chRow.classList.toggle('d-none', !(['book','manga','manhwa'].includes(v)));
+  }
+  toggleForType_New();
+  typeSel?.addEventListener('change', toggleForType_New);
+
+  // Per-item Edit modals dynamic fields
+  {% if mode == 'list' and rows %}
+    {% for r in rows %}
+      (function(){
+        const selType = document.getElementById('edit-media-type-{{ r.id }}');
+        const selStatus = document.getElementById('edit-status-{{ r.id }}');
+        const chWrap = document.getElementById('edit-chapter-fields-{{ r.id }}');
+        const DEFAULT_STATUSES = ["current","waiting","finished"];
+        const SERIAL_STATUSES  = ["ongoing","completed","hiatus","canceled"];
+
+        function fill(selectEl, list, selected){
+          if (!selectEl) return;
+          selectEl.innerHTML = "";
+          list.forEach(v=>{
+            const o=document.createElement('option');
+            o.value=v; o.textContent=v.charAt(0).toUpperCase()+v.slice(1);
+            if(selected && selected===v) o.selected=true;
+            selectEl.appendChild(o);
+          });
+        }
+        function toggleForType_Edit(){
+          const v = (selType.value || '').toLowerCase();
+          const serial = ['manga','manhwa'].includes(v);
+          const currentStatus = "{{ r.status }}";
+          fill(selStatus, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, currentStatus);
+          if (chWrap) chWrap.classList.toggle('d-none', !(['book','manga','manhwa'].includes(v)));
+        }
+        selType?.addEventListener('change', toggleForType_Edit);
+        toggleForType_Edit();
+      })();
+    {% endfor %}
+  {% endif %}
+})();
+</script>
+</body>
+</html>
+

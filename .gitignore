@@ -1,0 +1,21 @@
+# Python junk
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtualenv
+venv/
+
+# Local config / secrets (if you add a .env later)
+.env
+.env.*
+
+# Runtime data
+media.db
+instance/
+uploads/
+
+# OS/editor stuff
+.DS_Store
+Thumbs.db
+
