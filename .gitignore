@@ -1,9 +1,47 @@
-venv/
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.sqlite3
+*.pyd
+*.so
+*.egg-info/
+.dist-info/
+build/
+dist/
+.cache/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+
+# --- Virtual envs ---
+.venv/
+venv/
+ENV/
+
+# --- Flask / local data ---
+instance/
 *.db
+*.sqlite
+*.sqlite3
+*.log
+
+# --- App-specific ---
 uploads/
+!uploads/.gitkeep
+# If you ever add a /media folder for local storage:
+media/
+!media/.gitkeep
+
+# --- Environment files ---
 .env
+.env.*
+!.env.example
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.code-workspace
 .DS_Store
+Thumbs.db
+desktop.ini
