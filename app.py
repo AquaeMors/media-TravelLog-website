@@ -15,7 +15,25 @@ from PIL import Image, ImageOps  # thumbnails
 
 # ---------------- App & Config ----------------
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////opt/media/media.db"
+
+# Base folder of this project (portable across OSes)
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+
+# Build a cross-platform SQLite file URI for local dev
+def _local_sqlite_uri(filename: str) -> str:
+    # SQLAlchemy wants forward slashes in the URI even on Windows
+    p = (BASE_DIR / filename).resolve()
+    return "sqlite:///" + str(p).replace("\\", "/")
+
+# Choose DB URI:
+# 1) honor env vars (DATABASE_URL or SQLALCHEMY_DATABASE_URI)
+# 2) else if /opt/media exists, use server DB there
+# 3) else fall back to local ./media.db
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("SQLALCHEMY_DATABASE_URI")
+    or ("sqlite:////opt/media/media.db" if os.path.isdir("/opt/media") else _local_sqlite_uri("media.db"))
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Sessions / cookies
@@ -25,8 +43,19 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = not bool(os.environ.get("COOKIE_INSECURE"))
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
-# Uploads
-app.config["UPLOAD_ROOT"] = os.environ.get("UPLOAD_ROOT", "/opt/media/uploads")
+# Uploads directory:
+# 1) honor env var UPLOAD_ROOT
+# 2) else if /opt/media/uploads is available, use it (server)
+# 3) else fall back to local ./uploads
+_upload_root_env = os.environ.get("UPLOAD_ROOT")
+if _upload_root_env:
+    upload_root = _upload_root_env
+elif os.path.isdir("/opt/media"):
+    upload_root = "/opt/media/uploads"
+else:
+    upload_root = str((BASE_DIR / "uploads").resolve())
+
+app.config["UPLOAD_ROOT"] = upload_root
 app.config["MAX_CONTENT_LENGTH"] = 512 * 1024 * 1024  # 512 MB
 
 # Thumbnails
@@ -190,6 +219,19 @@ def inject_user():
     if uid:
         u = User.query.get(uid)
     return {"current_user": u}
+
+@app.context_processor
+def override_url_for():
+    import os
+    def dated_url_for(endpoint, **values):
+        if endpoint == 'static':
+            filename = values.get('filename', '')
+            if filename:
+                filepath = os.path.join(app.root_path, 'static', filename)
+                if os.path.exists(filepath):
+                    values['v'] = int(os.path.getmtime(filepath))
+        return url_for(endpoint, **values)
+    return dict(url_for=dated_url_for)
 
 # ---------------- Auth/perm helpers ----------------
 def login_required(fn):
@@ -827,5 +869,5 @@ def healthz():
     return {"ok": True}, 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
-
+    # Local dev: bind to localhost
+    app.run(host="127.0.0.1", port=8000, debug=False)

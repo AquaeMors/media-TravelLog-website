@@ -2,8 +2,8 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
-*.DS_Store
-.env
-uploads/
-*.db
 *.sqlite3
+*.db
+uploads/
+.env
+.DS_Store

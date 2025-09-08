@@ -1,31 +1,31 @@
-.app-card {
-  border-radius: 1rem;
+/* Home page styles (page-specific) */
+
+.home-hero {
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
 }
 
-/* Taller cover so more of the image is visible */
-.card-cover {
-  height: 220px;            /* was 120px */
+/* Card image area on the Home cards */
+.home-card-img {
+  height: 220px;         /* desktop */
+  width: 100%;
   object-fit: cover;
-  border-top-left-radius: 1rem;
-  border-top-right-radius: 1rem;
 }
 
-/* Keep card body tight */
-.app-card .card-body {
-  padding: 0.75rem 1rem;
-}
-
-.app-card .card-title {
-  margin-bottom: .25rem;
-  font-size: 1.05rem;
+/* Placeholder block when a card has no image */
+.home-card-img.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f3f5;
+  color: #6c757d;
+  font-size: 1.1rem;
 }
 
 /* Responsive tuning */
 @media (max-width: 992px) {   /* tablets */
-  .card-cover { height: 180px; }
+  .home-card-img { height: 180px; }
 }
-
 @media (max-width: 576px) {   /* phones */
-  .card-cover { height: 150px; }
+  .home-card-img { height: 150px; }
 }
-

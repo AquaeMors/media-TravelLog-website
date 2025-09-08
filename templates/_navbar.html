@@ -1,0 +1,16 @@
+<nav class="navbar bg-white border-bottom">
+  <div class="container">
+    <a class="navbar-brand fw-semibold" href="/home">Home</a>
+    <div class="d-flex align-items-center gap-2">
+      {% if current_user and current_user.can_approve_users %}
+        <a class="btn btn-outline-secondary btn-sm" href="/admin/requests">User Requests</a>
+      {% endif %}
+      {% if current_user %}
+        <span class="text-muted small">Signed in as <strong>{{ current_user.username }}</strong></span>
+        <form method="post" action="/logout" class="m-0 ms-2">
+          <button class="btn btn-outline-danger btn-sm">Logout</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</nav>

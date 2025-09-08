@@ -1,50 +1,13 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Media Tracker</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <style>
-    .card-rounded{border-radius:1rem}
-    .w-9rem{width:9rem}
-    .w-18rem{max-width:18rem}
-    .modal-body.scrollable { max-height: 70vh; overflow: auto; }
-    .comment-item { padding:.5rem 0; border-top:1px solid #f0f2f4; }
-    .comment-item:first-child { border-top:0; }
-    .comment-meta { font-size:.9rem; }
-    .type-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important; }
-    .type-icon {
-      width: 48px; height: 48px; border-radius: 12px;
-      display:flex; align-items:center; justify-content:center;
-      background:#f1f3f5; font-weight:700;
-    }
-    .type-icon i { font-size: 1.4rem; line-height: 1; }
-  </style>
-</head>
-<body class="bg-light">
+{% extends "base.html" %}
+{% block title %}Media Tracker{% endblock %}
+{% block head %}
+<link href="{{ url_for('static', filename='css/tracker.css') }}" rel="stylesheet">
+{% endblock %}
 
-<nav class="navbar bg-white border-bottom">
-  <div class="container">
-    <a class="navbar-brand fw-semibold" href="/home">Home</a>
-    <div class="d-flex align-items-center gap-2">
-      {% if current_user and current_user.can_approve_users %}
-        <a class="btn btn-outline-secondary btn-sm" href="/admin/requests">User Requests</a>
-      {% endif %}
-      {% if current_user %}
-        <span class="text-muted small">Signed in as <strong>{{ current_user.username }}</strong></span>
-      {% endif %}
-      <form method="post" action="/logout" class="m-0 ms-2">
-        <button class="btn btn-outline-danger btn-sm">Logout</button>
-      </form>
-    </div>
-  </div>
-</nav>
-
+{% block content %}
 <div class="container py-4">
 
   {% if mode == 'menu' %}
-    <!-- Menu-only screen -->
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h1 class="h4 mb-0">Pick a media type</h1>
     </div>
@@ -81,7 +44,6 @@
     </div>
 
   {% else %}
-    <!-- List screen for the chosen type -->
     <div class="d-flex align-items-center justify-content-between mb-3">
       <div>
         <h1 class="h4 mb-0">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
@@ -90,7 +52,7 @@
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
     </div>
 
-    <!-- Filters (type removed; status/search only) -->
+    <!-- Filters -->
     <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
       <input type="hidden" name="type" value="{{ type_filter }}">
       <div class="col-auto">
@@ -180,7 +142,12 @@
 
                 <div class="col-md-3">
                   <label class="form-label">Status</label>
-                  <select id="add-status" name="status" class="form-select"></select>
+                  <!-- Pre-fill with server status list for current type -->
+                  <select id="add-status" name="status" class="form-select">
+                    {% for s in STATUS_OPTIONS %}
+                      <option value="{{ s }}">{{ s.title() }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
 
                 <div class="col-md-3">
@@ -198,7 +165,7 @@
                   <input name="tags" class="form-control" placeholder="Comma-separated">
                 </div>
 
-                <!-- Chapters (conditional) -->
+                <!-- Chapters (conditional via JS) -->
                 <div id="chapter-fields" class="row g-2 mt-1 d-none">
                   <div class="col-auto">
                     <label class="form-label">Chapter (current)</label>
@@ -226,7 +193,7 @@
       </div>
     </div>
 
-    <!-- Item Detail Modals (dual-column: details | comments) -->
+    <!-- Item Detail + Edit Modals -->
     {% for r in rows %}
     <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -244,7 +211,6 @@
 
           <div class="modal-body">
             <div class="row g-3">
-              <!-- LEFT: Details -->
               <div class="col-md-6">
                 <div class="card card-rounded h-100">
                   <div class="card-body">
@@ -269,7 +235,6 @@
                 </div>
               </div>
 
-              <!-- RIGHT: Comments -->
               <div class="col-md-6">
                 <div class="card card-rounded h-100">
                   <div class="card-header d-flex justify-content-between align-items-center">
@@ -320,7 +285,7 @@
       </div>
     </div>
 
-    <!-- Edit Item Modal -->
+    <!-- Edit Item Modal (with data- hooks for external JS) -->
     <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -339,7 +304,11 @@
 
                 <div class="col-md-3">
                   <label class="form-label">Type</label>
-                  <select id="edit-media-type-{{ r.id }}" name="media_type" class="form-select">
+                  <select id="edit-media-type-{{ r.id }}"
+                          name="media_type"
+                          class="form-select js-edit-type"
+                          data-status-target="edit-status-{{ r.id }}"
+                          data-current-status="{{ r.status }}">
                     {% for t in MEDIA_TYPES %}
                       <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
                     {% endfor %}
@@ -366,7 +335,7 @@
                   <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
                 </div>
 
-                <!-- Chapters (conditional) -->
+                <!-- Chapters (shown/hidden by JS if type supports it) -->
                 <div id="edit-chapter-fields-{{ r.id }}" class="row g-2 mt-1 d-none">
                   <div class="col-auto">
                     <label class="form-label">Chapter (current)</label>
@@ -398,78 +367,9 @@
     {% endfor %}
   {% endif %}
 
-</div> <!-- /container -->
+</div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-(function(){
-  // Only on list mode do we bind filters + dynamic fields
-  const filterForm = document.getElementById('filterForm');
-  if (filterForm) {
-    document.getElementById('filter-status')?.addEventListener('change', () => filterForm.submit());
-  }
-
-  // Dynamic status + chapter fields (New modal)
-  const typeSel = document.getElementById('add-media-type');
-  const statusSel = document.getElementById('add-status');
-  const chRow = document.getElementById('chapter-fields');
-  const DEFAULT_STATUSES = ["current","waiting","finished"];
-  const SERIAL_STATUSES  = ["ongoing","completed","hiatus","canceled"];
-
-  function fillStatusOptions(selectEl, list, selected){
-    if (!selectEl) return;
-    selectEl.innerHTML = "";
-    list.forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v; opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
-      if (selected && selected === v) opt.selected = true;
-      selectEl.appendChild(opt);
-    });
-  }
-  function toggleForType_New() {
-    if (!typeSel) return;
-    const v = (typeSel.value || '').toLowerCase();
-    const serial = ['manga','manhwa'].includes(v);
-    fillStatusOptions(statusSel, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, null);
-    if (chRow) chRow.classList.toggle('d-none', !(['book','manga','manhwa'].includes(v)));
-  }
-  toggleForType_New();
-  typeSel?.addEventListener('change', toggleForType_New);
-
-  // Per-item Edit modals dynamic fields
-  {% if mode == 'list' and rows %}
-    {% for r in rows %}
-      (function(){
-        const selType = document.getElementById('edit-media-type-{{ r.id }}');
-        const selStatus = document.getElementById('edit-status-{{ r.id }}');
-        const chWrap = document.getElementById('edit-chapter-fields-{{ r.id }}');
-        const DEFAULT_STATUSES = ["current","waiting","finished"];
-        const SERIAL_STATUSES  = ["ongoing","completed","hiatus","canceled"];
-
-        function fill(selectEl, list, selected){
-          if (!selectEl) return;
-          selectEl.innerHTML = "";
-          list.forEach(v=>{
-            const o=document.createElement('option');
-            o.value=v; o.textContent=v.charAt(0).toUpperCase()+v.slice(1);
-            if(selected && selected===v) o.selected=true;
-            selectEl.appendChild(o);
-          });
-        }
-        function toggleForType_Edit(){
-          const v = (selType.value || '').toLowerCase();
-          const serial = ['manga','manhwa'].includes(v);
-          const currentStatus = "{{ r.status }}";
-          fill(selStatus, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, currentStatus);
-          if (chWrap) chWrap.classList.toggle('d-none', !(['book','manga','manhwa'].includes(v)));
-        }
-        selType?.addEventListener('change', toggleForType_Edit);
-        toggleForType_Edit();
-      })();
-    {% endfor %}
-  {% endif %}
-})();
-</script>
-</body>
-</html>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tracker.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,31 @@
+/* static/css/app.css */
+/* Global shared utilities and small site-wide tweaks */
+
+/* ---- Utilities ---- */
+.card-rounded { border-radius: 1rem; }
+.w-9rem { width: 9rem; }
+.w-18rem { max-width: 18rem; }
+.transition { transition: .15s ease-in-out; }
+
+/* ---- Comments (used in tracker/travel modals) ---- */
+.comment-item { padding: .5rem 0; border-top: 1px solid #f0f2f4; }
+.comment-item:first-child { border-top: 0; }
+.comment-meta { font-size: .9rem; }
+
+/* ---- Long modal bodies ---- */
+.modal-body.scrollable { max-height: 70vh; overflow: auto; }
+
+/* ---- Image helpers ---- */
+img[loading="lazy"] { /* small safety to avoid flicker on slow networks */
+  background: #f8f9fa;
+}
+
+/* ---- Buttons/links subtle hover (optional, minimal) ---- */
+a.btn:hover,
+button.btn:hover { filter: brightness(0.98); }
+
+/* ---- Tables (slightly tighter) ---- */
+.table td, .table th { vertical-align: middle; }
+
+/* ---- Small typography tweaks ---- */
+.small, .text-muted.small { font-size: .875rem; }
