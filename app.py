@@ -199,24 +199,51 @@ with app.app_context():
             db.session.execute(text("ALTER TABLE registration_request ADD COLUMN decided_by_user_id INTEGER"))
 
     # Seed Home cards if none exist
-    if db.session.query(HomeCard).count() == 0:
-        db.session.add(HomeCard(
-            key="travel",
-            title="T&R Travel Log",
-            description="Map our adventures, add photos, and notes.",
-            url="/travel",
-            sort_order=10
-        ))
-        db.session.add(HomeCard(
-            key="tracker",
-            title="Media Tracker",
-            description="Track books, manga/manhwa, movies, shows, and more.",
-            url="/tracker",
-            sort_order=20
-        ))
-        db.session.commit()
+    def ensure_card(key, title, description, url, sort_order):
+        if not HomeCard.query.filter_by(key=key).first():
+            db.session.add(HomeCard(
+                key=key,
+                title=title,
+                description=description,
+                url=url,
+                sort_order=sort_order
+            ))
 
+    ensure_card("travel",  "T&R Travel Log",
+                "Map our adventures, add photos, and notes.", "/travel", 10)
+    ensure_card("tracker", "Media Tracker",
+                "Track books, manga/manhwa, movies, shows, and more.", "/tracker", 20)
+    ensure_card("fitness", "Fitness",
+                "Section for keeping track of and looking at trends for personal fitness", "/fitness", 30)
+    
     db.session.commit()
+
+    # db.session.commit()
+    # if db.session.query(HomeCard).count() == 0:
+    #     db.session.add(HomeCard(
+    #         key="travel",
+    #         title="T&R Travel Log",
+    #         description="Map our adventures, add photos, and notes.",
+    #         url="/travel",
+    #         sort_order=10
+    #     ))
+    #     db.session.add(HomeCard(
+    #         key="tracker",
+    #         title="Media Tracker",
+    #         description="Track books, manga/manhwa, movies, shows, and more.",
+    #         url="/tracker",
+    #         sort_order=20
+    #     ))
+    #     db.session.add(HomeCard(
+    #         key="fitness",
+    #         title="Fitness",
+    #         description="Section for keeping track of and looking at trends for personal fitness",
+    #         url="/fitness",
+    #         sort_order=30
+    #     ))
+    #     db.session.commit()
+
+    # db.session.commit()
 
 # ---------------- Template helpers ----------------
 @app.get("/favicon.ico")
@@ -744,6 +771,11 @@ def travel():
 def api_trips():
     trips = Trip.query.filter(Trip.lat.isnot(None), Trip.lon.isnot(None)).order_by(Trip.created_at.desc()).all()
     return jsonify([{"id": t.id, "title": t.title, "lat": t.lat, "lon": t.lon} for t in trips])
+
+@app.get("/fitness")
+@login_required
+def fitness():
+    return render_template("fitness.html")
 
 @app.post("/travel/new")
 @login_required
