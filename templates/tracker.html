@@ -126,26 +126,29 @@
           <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
           {% endif %}
 
-          <td class="text-muted">
+          <td>
             {% if r.tags %}
-            <div class="d-flex flex-wrap gap-1">
+            <div class="tag-list d-flex flex-wrap gap-1" data-max-xs="3">
               {% for tg in r.tags.split(',') %}
               {% set t = tg.strip() %}
               {% if t %}
               {% set t_l = t|lower %}
               {% if t_l in tags %}
-              <span class="pill tag-pill disabled" aria-disabled="true" title="Already filtering">{{ t }}</span>
+              <span class="pill tag-pill disabled" aria-disabled="true" data-row-ignore>{{ t }}</span>
               {% else %}
-              <a class="pill tag-pill"
+              <a class="pill tag-pill" data-row-ignore
                 href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}&tag={{ t_l|urlencode }}">
                 {{ t }}
               </a>
               {% endif %}
               {% endif %}
               {% endfor %}
+              <button type="button" class="pill tag-more d-none" data-role="more" data-row-ignore>See all</button>
             </div>
             {% endif %}
           </td>
+
+
 
 
 
