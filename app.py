@@ -219,6 +219,13 @@ with app.app_context():
     db.session.commit()
 
 # ---------------- Template helpers ----------------
+@app.get("/favicon.ico")
+def favicon_root():
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "icons"), "favicon.ico",
+        cache_timeout=60*60*24*30
+    )
+
 @app.context_processor
 def inject_user():
     u = None

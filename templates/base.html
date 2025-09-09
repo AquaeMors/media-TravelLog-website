@@ -9,6 +9,18 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
     {% block head %}{% endblock %}
+
+    <!-- Favicon (classic .ico and modern PNGs) -->
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+
+    <!-- iOS home screen icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+    <!-- PWA / Android (optional but nice) -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+    <meta name="theme-color" content="#111827">
 </head>
 
 <body class="bg-light">

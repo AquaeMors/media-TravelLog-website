@@ -32,6 +32,8 @@ uploads/
 # If you ever add a /media folder for local storage:
 media/
 !media/.gitkeep
+tools/
+backups/
 
 # --- Environment files ---
 .env
