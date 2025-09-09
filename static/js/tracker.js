@@ -12,14 +12,10 @@
     if (!id) return;
     sessionStorage.removeItem('reopenModal');
     const el = document.getElementById(id);
-    if (el && window.bootstrap) {
-      bootstrap.Modal.getOrCreateInstance(el).show();
-    }
+    if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show();
   })();
 
-  // ---------- Persist the open modal across full page reload on comment submit/delete ----------
-  // This catches "Add comment" forms (action like /tracker/<id>/comment)
-  // and "Delete comment" forms (action like /tracker/comment/<id>/delete)
+  // Persist the open modal across full page reload on comment submit/delete
   $$('.modal form[action*="/comment"]').forEach((form) => {
     const modal = form.closest('.modal');
     if (!modal) return;
@@ -28,60 +24,88 @@
     });
   });
 
-  // ---------- Filter: auto-submit when status changes ----------
-  const filterForm = document.getElementById('filterForm');
-  document.getElementById('filter-status')?.addEventListener('change', () => filterForm?.submit());
+  // ---------- Field visibility (no status/rating) ----------
+  const FIELD_GROUPS = {
+    chapters:       ['book','manga','manhwa'],
+    seasons:        ['show','anime'],
+    year:           ['movie','game'],
+    runtime:        ['movie'],
+    platforms:      ['game'],
+    release_status: ['book','manga','manhwa','show','anime'],
+  };
 
-  // ---------- Status vocab ----------
-  const DEFAULT_STATUSES = ['current', 'waiting', 'finished'];
-  const SERIAL_STATUSES  = ['ongoing', 'completed', 'hiatus', 'canceled'];
-  const SERIAL_TYPES     = new Set(['manga', 'manhwa']);
-  const CHAPTER_TYPES    = new Set(['book', 'manga', 'manhwa']);
-
-  function fillOptions(selectEl, list, selected) {
-    if (!selectEl) return;
-    selectEl.innerHTML = '';
-    list.forEach((v) => {
-      const opt = document.createElement('option');
-      opt.value = v;
-      opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
-      if (selected && selected.toLowerCase() === v) opt.selected = true;
-      selectEl.appendChild(opt);
+  function showFieldsForType(type, container){
+    Object.entries(FIELD_GROUPS).forEach(([field, types])=>{
+      container.querySelectorAll(`[data-field="${field}"]`).forEach(el=>{
+        el.classList.toggle('d-none', !types.includes(type));
+      });
     });
   }
 
-  // ---------- New item modal ----------
-  const addTypeSel   = document.getElementById('add-media-type');
-  const addStatusSel = document.getElementById('add-status');
-  const addChWrap    = document.getElementById('chapter-fields');
-
-  function updateNewFields() {
-    const t = (addTypeSel?.value || '').toLowerCase();
-    const serial = SERIAL_TYPES.has(t);
-    fillOptions(addStatusSel, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, null);
-    if (addChWrap) addChWrap.classList.toggle('d-none', !CHAPTER_TYPES.has(t));
+  function initScoped(form){
+    const typeSel = form.querySelector('select[name="media_type"]');
+    if (!typeSel) return;
+    const container = form;
+    const apply = ()=> showFieldsForType((typeSel.value || '').toLowerCase(), container);
+    typeSel.addEventListener('change', apply);
+    apply(); // initial
   }
 
-  if (addTypeSel && addStatusSel) {
-    updateNewFields();
-    addTypeSel.addEventListener('change', updateNewFields);
-  }
+  // Initialize forms in both "New" and "Edit" modals
+  document.addEventListener('shown.bs.modal', (e)=>{
+    const form = e.target.querySelector('form');
+    if (form) initScoped(form);
+  });
+  // In case "New Item" / Edit modals are already in DOM:
+  $$('#newItemModal form, [id^="itemEdit"] form').forEach(initScoped);
+})();
 
-  // ---------- Edit modals ----------
-  document.querySelectorAll('.js-edit-type').forEach((selType) => {
-    const statusId  = selType.dataset.statusTarget;
-    const chWrapId  = selType.dataset.chapterTarget;
-    const selStatus = document.getElementById(statusId);
-    const chWrap    = document.getElementById(chWrapId);
-    const current   = (selType.dataset.currentStatus || '').toLowerCase();
+// ---- Load-more comments per modal ----
+(function () {
+  function initLoadMore(modal) {
+    const list = modal.querySelector('.comments-scroll');
+    if (!list) return;
+    const cards = Array.from(list.querySelectorAll('.comment-card'));
+    const btn   = list.querySelector('.btn-load-more');
+    const initial = parseInt(list.dataset.initial || '2', 10);
+    const step    = parseInt(btn?.dataset.step || '5', 10);
 
-    function updateEditFields(initial = false) {
-      const t = (selType.value || '').toLowerCase();
-      const serial = SERIAL_TYPES.has(t);
-      fillOptions(selStatus, serial ? SERIAL_STATUSES : DEFAULT_STATUSES, initial ? current : null);
-      if (chWrap) chWrap.classList.toggle('d-none', !CHAPTER_TYPES.has(t));
+    if (!cards.length) { if (btn) btn.classList.add('d-none'); return; }
+
+    let shown = Math.min(initial, cards.length);
+    function render() {
+      cards.forEach((el, i) => el.classList.toggle('d-none', i >= shown));
+      if (btn) btn.classList.toggle('d-none', shown >= cards.length);
     }
-    updateEditFields(true);
-    selType.addEventListener('change', () => updateEditFields(false));
+    render();
+
+    if (btn) {
+      btn.addEventListener('click', () => {
+        shown = Math.min(shown + step, cards.length);
+        render();
+      });
+    }
+  }
+
+  // init whenever a tracker modal opens
+  document.addEventListener('shown.bs.modal', (e) => {
+    if (e.target.matches('.modal')) initLoadMore(e.target);
   });
 })();
+
+// --- Clickable rows (open modal) & keyboard support ---
+document.addEventListener('click', (e) => {
+  // If clicking something marked as row-ignore (e.g., Edit), don't bubble to the row
+  if (e.target.closest('[data-row-ignore]')) {
+    e.stopPropagation();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  const row = e.target.closest('tr.media-row[role="button"]');
+  if (!row) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    row.click(); // Bootstrap handles [data-bs-toggle="modal"]
+  }
+});

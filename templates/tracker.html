@@ -8,366 +8,463 @@
 <div class="container py-4">
 
   {% if mode == 'menu' %}
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h1 class="h4 mb-0">Pick a media type</h1>
-    </div>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0">Pick a media type</h1>
+  </div>
 
-    {% set ICONS = {
-      'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
-      'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
-    } %}
+  {% set ICONS = {
+  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+  } %}
 
-    <div class="row g-3">
-      {% for t in MEDIA_TYPES %}
-        <div class="col-6 col-md-4 col-lg-3">
-          <a class="text-decoration-none text-reset" href="/tracker?type={{ t }}">
-            <div class="card card-rounded shadow-sm type-card transition">
-              <div class="card-body d-flex align-items-center gap-3">
-                <div class="type-icon"><i class="bi bi-{{ ICONS.get(t, 'list') }}" aria-hidden="true"></i></div>
-                <div>
-                  <div class="fw-semibold text-capitalize">{{ t }}</div>
-                  <div class="text-muted small">{{ type_counts[t] }} item{{ '' if type_counts[t]==1 else 's' }}</div>
-                </div>
-              </div>
+  <div class="row g-3">
+    {% for t in MEDIA_TYPES %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <a class="text-decoration-none text-reset" href="/tracker?type={{ t }}">
+        <div class="card card-rounded shadow-sm type-card transition">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="type-icon"><i class="bi bi-{{ ICONS.get(t, 'list') }}" aria-hidden="true"></i></div>
+            <div>
+              <div class="fw-semibold text-capitalize">{{ t }}</div>
+              <div class="text-muted small">{{ type_counts[t] }} item{{ '' if type_counts[t]==1 else 's' }}</div>
             </div>
-          </a>
+          </div>
         </div>
-      {% endfor %}
+      </a>
     </div>
+    {% endfor %}
+  </div>
 
   {% else %}
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <h1 class="h4 mb-0">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
-        <a href="/tracker" class="small">Change type</a>
-      </div>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
+      <a href="/tracker" class="small link-primary">All types</a>
     </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
+  </div>
 
-    <!-- Filters -->
-    <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
-      <input type="hidden" name="type" value="{{ type_filter }}">
-      <div class="col-auto">
-        <select id="filter-status" class="form-select form-select-sm" name="status">
-          <option value="all" {% if status_filter=='all' %}selected{% endif %}>All statuses</option>
-          {% for s in STATUS_OPTIONS %}
-            <option value="{{s}}" {% if status_filter==s %}selected{% endif %}>{{ s.title() }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-auto">
-        <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}" placeholder="Search title/tags/notes">
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-outline-primary btn-sm">Filter</button>
-      </div>
-    </form>
+  <!-- Media type pills -->
+  {% set ICONS = {
+  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+  } %}
+  <nav class="type-pills mb-3">
+    {% for t in MEDIA_TYPES %}
+    <a class="pill {% if t==type_filter %}active{% endif %}" href="/tracker?type={{ t }}">
+      <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
+      <span class="text-capitalize">{{ t }}</span>
+    </a>
+    {% endfor %}
+  </nav>
 
-    <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Title</th><th>Status</th><th>Score</th><th>Chapters</th><th>Tags</th><th>Added</th><th style="width:1%;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if rows %}
-            {% for r in rows %}
-              <tr>
-                <td class="fw-semibold"><a href="#" data-bs-toggle="modal" data-bs-target="#item{{ r.id }}">{{ r.title }}</a></td>
-                <td>{{ r.status.title() }}</td>
-                <td>{{ r.score if r.score is not none else '—' }}</td>
-                <td>
-                  {% if r.chapter_current is not none or r.chapter_total is not none %}
-                    {{ r.chapter_current if r.chapter_current is not none else '?' }}{% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
-                  {% else %}—{% endif %}
-                </td>
-                <td class="text-muted">{{ r.tags or '' }}</td>
-                <td class="text-muted">{{ r.added_at.strftime('%Y-%m-%d') }}</td>
-                <td class="text-end text-nowrap">
-                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemEdit{{ r.id }}">Edit</button>
-                </td>
-              </tr>
-            {% endfor %}
-          {% else %}
-            <tr><td colspan="7" class="text-muted">No {{ type_filter }} yet.</td></tr>
+  <!-- Filters (q only) -->
+  <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
+    <input type="hidden" name="type" value="{{ type_filter }}">
+    <div class="col-auto">
+      <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
+        placeholder="Search title/tags/notes">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-primary btn-sm">Filter</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Title</th>
+          {% if type_filter in ['book','manga','manhwa'] %}
+          <th>Chapters</th>
+          {% elif type_filter in ['show','anime'] %}
+          <th>Seasons</th>
           {% endif %}
-        </tbody>
-      </table>
-    </div>
+          <th>Tags</th>
+          <th style="width:1%;">Actions</th>
+        </tr>
+      </thead>
 
-    <!-- New Item Modal -->
-    <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form method="post" action="/tracker">
-            <div class="modal-header">
-              <h5 class="modal-title">Add New <span class="text-capitalize">{{ type_filter }}</span></h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+      <tbody>
+        {% if rows %}
+        {% for r in rows %}
+        <tr class="media-row" role="button" tabindex="0" aria-label="Open {{ r.title }} details" data-bs-toggle="modal"
+          data-bs-target="#item{{ r.id }}">
+          <td class="fw-semibold">
+            <span class="title">{{ r.title }}</span>
+          </td>
 
-            <div class="modal-body">
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <label class="form-label">Title</label>
-                  <input name="title" class="form-control" required>
-                </div>
+          {% if type_filter in ['book','manga','manhwa'] %}
+          <td>{{ r.chapter_total if r.chapter_total is not none else '—' }}</td>
+          {% elif type_filter in ['show','anime'] %}
+          <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
+          {% endif %}
 
-                <div class="col-md-3">
-                  <label class="form-label">Type</label>
-                  <select id="add-media-type" name="media_type" class="form-select">
-                    {% for t in MEDIA_TYPES %}
-                      <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
+          <td class="text-muted">{{ r.tags or '' }}</td>
 
-                <div class="col-md-3">
-                  <label class="form-label">Status</label>
-                  <select id="add-status" name="status" class="form-select">
-                    {% for s in STATUS_OPTIONS %}
-                      <option value="{{ s }}">{{ s.title() }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-outline-secondary" data-row-ignore data-bs-toggle="modal"
+              data-bs-target="#itemEdit{{ r.id }}">
+              Edit
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-muted">No {{ type_filter }} yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
 
-                <div class="col-md-3">
-                  <label class="form-label">Score</label>
-                  <select name="score" class="form-select">
-                    <option value="">0-10</option>
-                    {% for n in range(0,11) %}
-                      <option value="{{n}}">{{n}}</option>
-                    {% endfor %}
-                  </select>
-                </div>
+    </table>
+  </div>
 
-                <div class="col-md-9">
-                  <label class="form-label">Tags/Genres</label>
-                  <input name="tags" class="form-control" placeholder="Comma-separated">
-                </div>
-
-                <div id="chapter-fields" class="row g-2 mt-1 d-none">
-                  <div class="col-auto">
-                    <label class="form-label">Chapter (current)</label>
-                    <input type="number" min="0" name="chapter_current" class="form-control w-9rem" placeholder="#">
-                  </div>
-                  <div class="col-auto">
-                    <label class="form-label">Total chapters (optional)</label>
-                    <input type="number" min="0" name="chapter_total" class="form-control w-9rem" placeholder="Total">
-                  </div>
-                </div>
-
-                <div class="col-12">
-                  <label class="form-label">Notes (optional)</label>
-                  <textarea name="notes" class="form-control" rows="3"></textarea>
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary">Add</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Item Detail + Edit Modals -->
-    {% for r in rows %}
-    <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
+  <!-- New Item Modal -->
+  <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+      <div class="modal-content">
+        <form method="post" action="/tracker" enctype="multipart/form-data">
           <div class="modal-header">
-            <div>
-              <h5 class="modal-title">{{ r.title }}</h5>
-              <div class="text-muted small">
-                {{ type_filter.title() }} • Status: {{ r.status.title() }}{% if r.score is not none %} • Score: {{ r.score }}{% endif %}
-              </div>
-            </div>
+            <h5 class="modal-title">Add New <span class="text-capitalize">{{ type_filter }}</span></h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
 
           <div class="modal-body">
-            <div class="row g-3">
+            <div class="row g-2">
               <div class="col-md-6">
-                <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
-                  <div class="card-body flex-grow-1 overflow-auto">
-                    <h6 class="text-muted">Details</h6>
-                    <dl class="row mb-0">
-                      <dt class="col-5">Status</dt><dd class="col-7">{{ r.status.title() }}</dd>
-                      <dt class="col-5">Score</dt><dd class="col-7">{{ r.score if r.score is not none else '—' }}</dd>
-                      <dt class="col-5">Chapters</dt>
-                      <dd class="col-7">
-                        {% if r.chapter_current is not none or r.chapter_total is not none %}
-                          {{ r.chapter_current if r.chapter_current is not none else '?' }}{% if r.chapter_total is not none %}/{{ r.chapter_total }}{% endif %}
-                        {% else %}—{% endif %}
-                      </dd>
-                      <dt class="col-5">Tags</dt><dd class="col-7">{{ r.tags or '—' }}</dd>
-                      <dt class="col-5">Added</dt><dd class="col-7">{{ r.added_at.strftime('%Y-%m-%d %H:%M') }}</dd>
-                    </dl>
-                    {% if r.notes %}
-                      <hr>
-                      <div><strong>Notes</strong><div class="mt-1">{{ r.notes }}</div></div>
-                    {% endif %}
-                  </div>
-                </div>
+                <label class="form-label">Title</label>
+                <input name="title" class="form-control" required>
               </div>
 
               <div class="col-md-6">
-                <div class="card card-rounded h-100">
-                  <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Comments</span>
-                    <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
-                  </div>
-
-                  <div class="card-body comments-panel">
-                    <div class="comments-ui">
-                      <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment" data-keep-modal>
-                        <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username }}</strong></label>
-                        <textarea class="form-control" name="body" rows="3" maxlength="2000" placeholder="Share a thought…" required></textarea>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                          <div class="comments-toolbar">
-                            <button type="button" class="btn-tool" title="Bold" disabled><i class="bi bi-type-bold"></i></button>
-                            <button type="button" class="btn-tool" title="Italic" disabled><i class="bi bi-type-italic"></i></button>
-                            <button type="button" class="btn-tool" title="Link" disabled><i class="bi bi-link-45deg"></i></button>
-                          </div>
-                          <button class="btn btn-sm btn-primary">Comment</button>
-                        </div>
-                      </form>
-                    </div>
-
-                    <div class="comments-scroll">
-                      {% if r.comments %}
-                        {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
-                          <article class="comment-card">
-                            <div class="d-flex justify-content-between">
-                              <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
-                              {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
-                                <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal data-confirm="Delete this comment?">
-                                  <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
-                                </form>
-                              {% endif %}
-                            </div>
-                            <div class="mt-2">{{ c.body }}</div>
-                            <div class="comment-footer">
-                              <div class="d-flex gap-2">
-                                <button type="button"
-                                        class="btn btn-react {{ 'has-count' if c.likes>0 }}"
-                                        data-react="like" data-kind="item" data-comment-id="{{ c.id }}"
-                                        aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
-                                  <i class="bi bi-arrow-up"></i>
-                                  <span class="count">{{ c.likes }}</span>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
-                                        data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
-                                        aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
-                                  <i class="bi bi-arrow-down"></i>
-                                  <span class="count">{{ c.dislikes }}</span>
-                                </button>
-                              </div>
-                              <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                            </div>
-                          </article>
-                        {% endfor %}
-                        <div class="mt-3"><button type="button" class="btn btn-load-more w-100" disabled>Load More</button></div>
-                      {% else %}
-                        <div class="text-muted">No comments yet.</div>
-                      {% endif %}
-                    </div><!-- /.comments-scroll -->
-                  </div><!-- /.card-body -->
-                </div>
+                <label class="form-label">Type</label>
+                <select id="add-media-type" name="media_type" class="form-select">
+                  {% for t in MEDIA_TYPES %}
+                  <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
+                  {% endfor %}
+                </select>
               </div>
-            </div><!-- /row -->
+
+              <!-- Cover -->
+              <div class="col-12">
+                <label class="form-label">Upload cover</label>
+                <input type="file" name="cover" class="form-control" accept="image/*">
+                <div class="form-text">PNG/JPG/WebP. We’ll thumbnail automatically.</div>
+              </div>
+
+              <!-- Chapters (books/manga/manhwa) -->
+              <div class="col-md-4" data-field="chapters">
+                <label class="form-label">Total chapters</label>
+                <input type="number" min="0" name="chapter_total" class="form-control" placeholder="e.g. 120">
+              </div>
+
+              <!-- Seasons (shows/anime) -->
+              <div class="col-md-4 d-none" data-field="seasons">
+                <label class="form-label">Seasons</label>
+                <input type="number" min="0" name="seasons" class="form-control" placeholder="e.g. 3">
+              </div>
+
+              <!-- Movie specifics -->
+              <div class="col-md-4 d-none" data-field="year">
+                <label class="form-label">Year</label>
+                <input type="number" min="1800" max="2100" name="year" class="form-control">
+              </div>
+              <div class="col-md-4 d-none" data-field="runtime">
+                <label class="form-label">Runtime (mins)</label>
+                <input type="number" min="0" name="runtime_mins" class="form-control">
+              </div>
+
+              <!-- Game specifics -->
+              <div class="col-md-6 d-none" data-field="platforms">
+                <label class="form-label">Platform(s)</label>
+                <input name="platforms" class="form-control" placeholder="PC, Switch, PS5…">
+              </div>
+
+              <!-- Optional release status -->
+              <div class="col-md-6" data-field="release_status">
+                <label class="form-label">Release status (optional)</label>
+                <select name="release_status" class="form-select">
+                  <option value="">—</option>
+                  <option>Ongoing</option>
+                  <option>Completed</option>
+                  <option>Hiatus</option>
+                  <option>Canceled</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Tags/Genres</label>
+                <input name="tags" class="form-control" placeholder="Comma-separated">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Notes (optional)</label>
+                <textarea name="notes" class="form-control" rows="3"></textarea>
+              </div>
+            </div>
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary">Add</button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
+  </div>
 
-    <!-- Edit Item Modal -->
-    <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-          <form method="post" action="/tracker/{{ r.id }}/update">
-            <div class="modal-header">
-              <h5 class="modal-title">Edit: {{ r.title }}</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- Item Detail + Edit Modals -->
+  {% for r in rows %}
+  <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title">{{ r.title }}</h5>
+            <div class="text-muted small">
+              {{ r.media_type.title() }}{% if r.release_status %} • {{ r.release_status }}{% endif %}
             </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
 
-            <div class="modal-body">
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <label class="form-label">Title</label>
-                  <input name="title" class="form-control" value="{{ r.title }}" required>
-                </div>
-
-                <div class="col-md-3">
-                  <label class="form-label">Type</label>
-                  <select id="edit-media-type-{{ r.id }}"
-                          name="media_type"
-                          class="form-select js-edit-type"
-                          data-status-target="edit-status-{{ r.id }}"
-                          data-current-status="{{ r.status }}">
-                    {% for t in MEDIA_TYPES %}
-                      <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-
-                <div class="col-md-3">
-                  <label class="form-label">Status</label>
-                  <select id="edit-status-{{ r.id }}" name="status" class="form-select"></select>
-                </div>
-
-                <div class="col-md-3">
-                  <label class="form-label">Score</label>
-                  <select name="score" class="form-select">
-                    <option value="">—</option>
-                    {% for n in range(0,11) %}
-                      <option value="{{n}}" {% if r.score is not none and r.score==n %}selected{% endif %}>{{n}}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-
-                <div class="col-md-9">
-                  <label class="form-label">Tags/Genres</label>
-                  <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
-                </div>
-
-                <div id="edit-chapter-fields-{{ r.id }}" class="row g-2 mt-1 d-none">
-                  <div class="col-auto">
-                    <label class="form-label">Chapter (current)</label>
-                    <input type="number" min="0" name="chapter_current" class="form-control w-9rem"
-                           value="{{ r.chapter_current if r.chapter_current is not none }}">
+        <div class="modal-body">
+          <div class="row g-3 tracker-split">
+            <div class="col-md-6">
+              <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
+                <div class="card-body flex-grow-1 overflow-auto">
+                  {% if r.cover_thumb_path %}
+                  <div class="text-center mb-3">
+                    <img src="/u/{{ r.cover_thumb_path }}" alt="Cover" class="img-fluid rounded"
+                      style="max-height: 260px;">
                   </div>
-                  <div class="col-auto">
-                    <label class="form-label">Total chapters (optional)</label>
-                    <input type="number" min="0" name="chapter_total" class="form-control w-9rem"
-                           value="{{ r.chapter_total if r.chapter_total is not none }}">
-                  </div>
-                </div>
+                  {% endif %}
+                  <h6 class="text-muted">Details</h6>
+                  <dl class="row mb-0">
+                    {% if r.chapter_total is not none and r.media_type in ['book','manga','manhwa'] %}
+                    <dt class="col-5">Chapters</dt>
+                    <dd class="col-7">{{ r.chapter_total }}</dd>
+                    {% endif %}
 
-                <div class="col-12">
-                  <label class="form-label">Notes (optional)</label>
-                  <textarea name="notes" class="form-control" rows="3">{{ r.notes or '' }}</textarea>
+                    {% if r.seasons is not none and r.media_type in ['show','anime'] %}
+                    <dt class="col-5">Seasons</dt>
+                    <dd class="col-7">{{ r.seasons }}</dd>
+                    {% endif %}
+
+                    {% if r.release_status %}
+                    <dt class="col-5">Release</dt>
+                    <dd class="col-7">{{ r.release_status }}</dd>
+                    {% endif %}
+
+                    {% if r.year %}
+                    <dt class="col-5">Year</dt>
+                    <dd class="col-7">{{ r.year }}</dd>
+                    {% endif %}
+
+                    {% if r.runtime_mins %}
+                    <dt class="col-5">Runtime</dt>
+                    <dd class="col-7">{{ r.runtime_mins }} min</dd>
+                    {% endif %}
+
+                    {% if r.platforms %}
+                    <dt class="col-5">Platforms</dt>
+                    <dd class="col-7">{{ r.platforms }}</dd>
+                    {% endif %}
+
+                    <dt class="col-5">Tags</dt>
+                    <dd class="col-7">{{ r.tags or '—' }}</dd>
+                  </dl>
+                  {% if r.notes %}
+                  <hr>
+                  <div><strong>Notes</strong>
+                    <div class="mt-1">{{ r.notes }}</div>
+                  </div>
+                  {% endif %}
                 </div>
               </div>
             </div>
 
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary">Save changes</button>
+            <div class="col-md-6">
+              <div class="card card-rounded h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span>Comments</span>
+                  <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
+                </div>
+
+                <div class="card-body comments-panel">
+                  <div class="comments-ui sticky-top bg-white pb-2" style="top: -0.5rem;">
+                    <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment" data-keep-modal>
+                      <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username
+                          }}</strong></label>
+                      <textarea class="form-control" name="body" rows="3" maxlength="2000"
+                        placeholder="Share a thought…" required></textarea>
+                      <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="comments-toolbar">
+                          <button type="button" class="btn-tool" title="Bold" disabled><i
+                              class="bi bi-type-bold"></i></button>
+                          <button type="button" class="btn-tool" title="Italic" disabled><i
+                              class="bi bi-type-italic"></i></button>
+                          <button type="button" class="btn-tool" title="Link" disabled><i
+                              class="bi bi-link-45deg"></i></button>
+                        </div>
+                        <button class="btn btn-sm btn-primary">Comment</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="comments-scroll" data-initial="2">
+                    {% if r.comments %}
+                    {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
+                    <article class="comment-card">
+                      <div class="d-flex justify-content-between">
+                        <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
+                        {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
+                        <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal
+                          data-confirm="Delete this comment?">
+                          <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                        {% endif %}
+                      </div>
+
+                      <div class="comment-body mt-2">{{ c.body }}</div>
+
+                      <div class="comment-footer">
+                        <div class="d-flex gap-2">
+                          <button type="button" class="btn btn-react {{ 'has-count' if c.likes>0 }}" data-react="like"
+                            data-kind="item" data-comment-id="{{ c.id }}"
+                            aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
+                            <i class="bi bi-arrow-up"></i>
+                            <span class="count">{{ c.likes }}</span>
+                          </button>
+                          <button type="button" class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
+                            data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
+                            aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
+                            <i class="bi bi-arrow-down"></i>
+                            <span class="count">{{ c.dislikes }}</span>
+                          </button>
+                        </div>
+                        <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">{{
+                          c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                      </div>
+                    </article>
+                    {% endfor %}
+
+                    <button type="button" class="btn btn-load-more w-100 mt-3" data-step="5">Load more</button>
+                    {% else %}
+                    <div class="text-muted">No comments yet.</div>
+                    {% endif %}
+                  </div><!-- /.comments-scroll -->
+                </div><!-- /.card-body -->
+              </div>
             </div>
-          </form>
+          </div><!-- /row -->
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
-    {% endfor %}
+  </div>
+
+  <!-- Edit Item Modal -->
+  <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+      <div class="modal-content">
+        <form method="post" action="/tracker/{{ r.id }}/update" enctype="multipart/form-data">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit: {{ r.title }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label">Title</label>
+                <input name="title" class="form-control" value="{{ r.title }}" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Type</label>
+                <select name="media_type" class="form-select js-type">
+                  {% for t in MEDIA_TYPES %}
+                  <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Cover -->
+              <div class="col-12">
+                <label class="form-label">Upload cover</label>
+                <input type="file" name="cover" class="form-control" accept="image/*">
+              </div>
+
+              <!-- Chapters -->
+              <div class="col-md-4" data-field="chapters">
+                <label class="form-label">Total chapters</label>
+                <input type="number" min="0" name="chapter_total" class="form-control"
+                  value="{{ r.chapter_total if r.chapter_total is not none }}">
+              </div>
+
+              <!-- Seasons -->
+              <div class="col-md-4 d-none" data-field="seasons">
+                <label class="form-label">Seasons</label>
+                <input type="number" min="0" name="seasons" class="form-control"
+                  value="{{ r.seasons if r.seasons is not none }}">
+              </div>
+
+              <!-- Movie specifics -->
+              <div class="col-md-4 d-none" data-field="year">
+                <label class="form-label">Year</label>
+                <input type="number" min="1800" max="2100" name="year" class="form-control"
+                  value="{{ r.year if r.year is not none }}">
+              </div>
+              <div class="col-md-4 d-none" data-field="runtime">
+                <label class="form-label">Runtime (mins)</label>
+                <input type="number" min="0" name="runtime_mins" class="form-control"
+                  value="{{ r.runtime_mins if r.runtime_mins is not none }}">
+              </div>
+
+              <!-- Game specifics -->
+              <div class="col-md-6 d-none" data-field="platforms">
+                <label class="form-label">Platform(s)</label>
+                <input name="platforms" class="form-control" value="{{ r.platforms or '' }}">
+              </div>
+
+              <!-- Release status -->
+              <div class="col-md-6" data-field="release_status">
+                <label class="form-label">Release status (optional)</label>
+                <select name="release_status" class="form-select">
+                  <option value="">—</option>
+                  <option {% if r.release_status=='Ongoing' %}selected{% endif %}>Ongoing</option>
+                  <option {% if r.release_status=='Completed' %}selected{% endif %}>Completed</option>
+                  <option {% if r.release_status=='Hiatus' %}selected{% endif %}>Hiatus</option>
+                  <option {% if r.release_status=='Canceled' %}selected{% endif %}>Canceled</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Tags/Genres</label>
+                <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Notes (optional)</label>
+                <textarea name="notes" class="form-control" rows="3">{{ r.notes or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
   {% endif %}
 
 </div>

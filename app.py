@@ -62,9 +62,9 @@ db = SQLAlchemy(app)
 
 MEDIA_TYPES = ["book", "movie", "show", "anime", "manga", "manhwa", "game", "other"]
 
-DEFAULT_STATUSES = ["current", "waiting", "finished"]
-SERIAL_TYPES = ["manga", "manhwa"]
-SERIAL_STATUSES = ["ongoing", "completed", "hiatus", "canceled"]
+DEFAULT_STATUSES = ["current", "waiting", "finished"]  # legacy (UI no longer uses)
+SERIAL_TYPES = ["manga", "manhwa"]                     # legacy (UI no longer uses)
+SERIAL_STATUSES = ["ongoing", "completed", "hiatus", "canceled"]  # legacy
 
 ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
@@ -90,13 +90,29 @@ class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False, index=True)
     media_type = db.Column(db.String(20), nullable=False, index=True)
-    status = db.Column(db.String(20), nullable=False, index=True)
+
+    # legacy columns kept for compatibility (not shown in UI now)
+    status = db.Column(db.String(20), nullable=False, index=True, default="info")
     score = db.Column(db.Integer)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     tags = db.Column(db.String(200))
     notes = db.Column(db.Text)
-    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     chapter_current = db.Column(db.Integer)
     chapter_total   = db.Column(db.Integer)
+
+    # new/non-personalized fields for display
+    seasons = db.Column(db.Integer)              # shows/anime
+    release_status = db.Column(db.String(20))    # Ongoing/Completed/Hiatus/Canceled
+    year = db.Column(db.Integer)                 # movies/games optional
+    runtime_mins = db.Column(db.Integer)         # movies optional
+    platforms = db.Column(db.String(200))        # games optional
+
+    # cover image
+    cover_path = db.Column(db.String(600))       # original uploaded image path under /u
+    cover_thumb_path = db.Column(db.String(600)) # jpg thumbnail for display
+
     comments = db.relationship("ItemComment", backref="item", lazy=True, cascade="all, delete-orphan")
 
 class Trip(db.Model):
@@ -183,12 +199,32 @@ with app.app_context():
     if "thumb_path" not in cols_photo:
         db.session.execute(text("ALTER TABLE photo ADD COLUMN thumb_path TEXT"))
 
-    # item table (chapters)
+    # item table (ensure new columns)
     cols_item = [r[1] for r in db.session.execute(text("PRAGMA table_info(item)")).fetchall()]
     if "chapter_current" not in cols_item:
         db.session.execute(text("ALTER TABLE item ADD COLUMN chapter_current INTEGER"))
     if "chapter_total" not in cols_item:
         db.session.execute(text("ALTER TABLE item ADD COLUMN chapter_total INTEGER"))
+    if "seasons" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN seasons INTEGER"))
+    if "release_status" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN release_status TEXT"))
+    if "year" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN year INTEGER"))
+    if "runtime_mins" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN runtime_mins INTEGER"))
+    if "platforms" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN platforms TEXT"))
+    if "cover_path" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN cover_path TEXT"))
+    if "cover_thumb_path" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN cover_thumb_path TEXT"))
+    if "status" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN status TEXT DEFAULT 'info'"))
+    if "score" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN score INTEGER"))
+    if "added_at" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN added_at DATETIME"))
 
     # registration_request older versions
     cols_rr = [r[1] for r in db.session.execute(text("PRAGMA table_info(registration_request)")).fetchall()]
@@ -217,33 +253,6 @@ with app.app_context():
                 "Section for keeping track of and looking at trends for personal fitness", "/fitness", 30)
     
     db.session.commit()
-
-    # db.session.commit()
-    # if db.session.query(HomeCard).count() == 0:
-    #     db.session.add(HomeCard(
-    #         key="travel",
-    #         title="T&R Travel Log",
-    #         description="Map our adventures, add photos, and notes.",
-    #         url="/travel",
-    #         sort_order=10
-    #     ))
-    #     db.session.add(HomeCard(
-    #         key="tracker",
-    #         title="Media Tracker",
-    #         description="Track books, manga/manhwa, movies, shows, and more.",
-    #         url="/tracker",
-    #         sort_order=20
-    #     ))
-    #     db.session.add(HomeCard(
-    #         key="fitness",
-    #         title="Fitness",
-    #         description="Section for keeping track of and looking at trends for personal fitness",
-    #         url="/fitness",
-    #         sort_order=30
-    #     ))
-    #     db.session.commit()
-
-    # db.session.commit()
 
 # ---------------- Template helpers ----------------
 @app.get("/favicon.ico")
@@ -393,6 +402,34 @@ def hydrate_comment_reactions(comments, user_id, kind: str):
         c.likes, c.dislikes = counts.get(c.id, (0, 0))
         c.user_reaction = mine.get(c.id)
 
+def save_item_cover(file_storage, item_id) -> tuple[str, str] | tuple[None, None]:
+    """Save original cover + a jpeg thumb, return (rel_original, rel_thumb) or (None,None)."""
+    if not file_storage or not file_storage.filename:
+        return None, None
+    original = secure_filename(file_storage.filename)
+    ext = pathlib.Path(original).suffix.lower()
+    head = file_storage.stream.read(16); file_storage.stream.seek(0)
+    if not _looks_like_image(head, ext):
+        return None, None
+
+    base_dir = pathlib.Path(app.config["UPLOAD_ROOT"]) / "tracker" / str(item_id)
+    thumbs_dir = base_dir / "thumbs"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    thumbs_dir.mkdir(parents=True, exist_ok=True)
+
+    uniq = f"cover{ext if ext in ALLOWED_EXTS else '.bin'}"
+    dest = base_dir / uniq
+    file_storage.save(dest)
+
+    thumb_name = "cover.jpg"
+    thumb_path = thumbs_dir / thumb_name
+    make_thumbnail(dest, thumb_path, app.config["THUMB_MAX_PX"], app.config["THUMB_QUALITY"])
+
+    rel_original = str(pathlib.Path("tracker") / str(item_id) / uniq)
+    rel_thumb = str(pathlib.Path("tracker") / str(item_id) / "thumbs" / thumb_name)
+    return rel_original, rel_thumb
+
+
 # ---------------- Routes ----------------
 @app.get("/")
 def root():
@@ -479,8 +516,8 @@ def register():
         return redirect(url_for("home"))
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-        confirm  = request.form.get("confirm") or ""
+        password = (request.form.get("password") or "")
+        confirm  = (request.form.get("confirm") or "")
         reason   = (request.form.get("reason") or "").strip()
 
         if not username or not password or not confirm:
@@ -579,9 +616,15 @@ def serve_upload(subpath):
 @app.route("/tracker", methods=["GET", "POST"])
 @login_required
 def tracker():
-    # Create on POST
+    # Create on POST (handles type-specific fields + optional cover)
     if request.method == "POST":
-        media_type = request.form["media_type"]
+        media_type = (request.form.get("media_type") or "").strip().lower()
+        title = (request.form.get("title") or "").strip()
+        # status/rating removed from UI; set a neutral legacy value
+        status = "info"
+        tags = (request.form.get("tags") or "").strip()
+        notes = (request.form.get("notes") or "").strip()
+        release_status = (request.form.get("release_status") or "").strip() or None
 
         def to_int(v):
             try:
@@ -589,28 +632,53 @@ def tracker():
             except Exception:
                 return None
 
-        if media_type.lower() in ("book", "manga", "manhwa"):
-            ch_cur = to_int(request.form.get("chapter_current"))
-            ch_tot = to_int(request.form.get("chapter_total"))
-        else:
-            ch_cur = None
-            ch_tot = None
+        # type-specific
+        chapter_total = None
+        seasons = None
+        # rating removed (per user later)
+        year = to_int(request.form.get("year"))
+        runtime_mins = to_int(request.form.get("runtime_mins"))
+        platforms = (request.form.get("platforms") or "").strip() or None
+
+        if media_type in ("book", "manga", "manhwa"):
+            chapter_total = to_int(request.form.get("chapter_total"))
+
+        if media_type in ("show", "anime"):
+            seasons = to_int(request.form.get("seasons"))
+
+        if not title or not media_type:
+            flash("Title and Type are required.", "danger")
+            return redirect(url_for("tracker"))
 
         itm = Item(
-            title=request.form["title"].strip(),
+            title=title,
             media_type=media_type,
-            status=request.form["status"],
-            score=parse_score(request.form.get("score")),
-            tags=request.form.get("tags", "").strip(),
-            notes=request.form.get("notes", "").strip(),
-            chapter_current=ch_cur,
-            chapter_total=ch_tot,
+            status=status,          # keep legacy column satisfied
+            score=None,             # rating removed from item-level UI
+            tags=tags,
+            notes=notes,
+            chapter_total=chapter_total,
+            seasons=seasons,
+            release_status=release_status,
+            year=year,
+            runtime_mins=runtime_mins,
+            platforms=platforms,
         )
         db.session.add(itm)
+        db.session.flush()  # need id for cover path
+
+        # optional cover upload
+        cover = request.files.get("cover")
+        if cover and cover.filename:
+            rel, rel_thumb = save_item_cover(cover, itm.id)
+            if rel and rel_thumb:
+                itm.cover_path = rel
+                itm.cover_thumb_path = rel_thumb
+
         db.session.commit()
         return redirect(url_for("tracker", type=media_type) if media_type in MEDIA_TYPES else url_for("tracker"))
 
-    # Menu-first UX
+    # ---- List/menu screens on GET ----
     type_filter = (request.args.get("type") or "").lower()
     valid_type = type_filter in MEDIA_TYPES
 
@@ -628,32 +696,19 @@ def tracker():
             type_counts=type_counts,
             type_filter=None,
             rows=[],
-            STATUS_OPTIONS=[],
-            status_filter="",
             q=""
         )
 
-    # List screen for chosen type
+    # List screen for chosen type (no status/rating filters; alpha sort)
     q = (request.args.get("q") or "").strip()
-    status_filter = (request.args.get("status") or "all").lower()
-
-    if type_filter in ("manga", "manhwa"):
-        status_options = SERIAL_STATUSES[:]
-    else:
-        status_options = DEFAULT_STATUSES[:]
-
-    if status_filter not in status_options and status_filter != "all":
-        status_filter = "all"
 
     query = Item.query.filter(Item.media_type == type_filter)
-    if status_filter != "all":
-        query = query.filter(Item.status == status_filter)
     if q:
         like = f"%{q}%"
         query = query.filter(or_(Item.title.ilike(like), Item.tags.ilike(like), Item.notes.ilike(like)))
 
     rows = (query
-            .order_by(Item.added_at.desc())
+            .order_by(Item.title.asc())  # alphabetical since "Added" is not displayed
             .options(subqueryload(Item.comments))
             .all())
 
@@ -666,15 +721,13 @@ def tracker():
         "tracker.html",
         mode="list",
         MEDIA_TYPES=MEDIA_TYPES,
-        STATUS_OPTIONS=status_options,
-        status_filter=status_filter,
         type_filter=type_filter,
         type_counts=type_counts,
         q=q,
         rows=rows
     )
 
-# ----- Tracker update (EDIT) -----
+
 @app.post("/tracker/<int:item_id>/update")
 @login_required
 def tracker_update(item_id):
@@ -682,34 +735,50 @@ def tracker_update(item_id):
 
     title = (request.form.get("title") or "").strip()
     media_type = (request.form.get("media_type") or "").strip().lower()
-    status = (request.form.get("status") or "").strip().lower()
-    score = parse_score(request.form.get("score"))
+    # status removed from UI — keep existing item.status (legacy)
     tags = (request.form.get("tags") or "").strip()
     notes = (request.form.get("notes") or "").strip()
+    release_status = (request.form.get("release_status") or "").strip() or None
 
     def to_int(v):
-        try: return int(v)
-        except Exception: return None
+        try:
+            return int(v)
+        except Exception:
+            return None
 
-    if media_type in ("book", "manga", "manhwa"):
-        ch_cur = to_int(request.form.get("chapter_current"))
-        ch_tot = to_int(request.form.get("chapter_total"))
-    else:
-        ch_cur = None
-        ch_tot = None
-
-    if not title or not media_type or not status:
-        flash("Title, Type and Status are required.", "danger")
+    if not title or not media_type:
+        flash("Title and Type are required.", "danger")
         return redirect(url_for("tracker") + f"#item{item.id}")
 
+    # reset type-specific fields
+    item.chapter_total = None
+    item.seasons = None
+    item.score = None  # rating removed at item-level
+    item.year = to_int(request.form.get("year"))
+    item.runtime_mins = to_int(request.form.get("runtime_mins"))
+    item.platforms = (request.form.get("platforms") or "").strip() or None
+
+    if media_type in ("book", "manga", "manhwa"):
+        item.chapter_total = to_int(request.form.get("chapter_total"))
+
+    if media_type in ("show", "anime"):
+        item.seasons = to_int(request.form.get("seasons"))
+
+    # assign common fields
     item.title = title
     item.media_type = media_type
-    item.status = status
-    item.score = score
+    # keep item.status as-is (legacy)
     item.tags = tags
     item.notes = notes
-    item.chapter_current = ch_cur
-    item.chapter_total = ch_tot
+    item.release_status = release_status
+
+    # optional cover re-upload
+    cover = request.files.get("cover")
+    if cover and cover.filename:
+        rel, rel_thumb = save_item_cover(cover, item.id)
+        if rel and rel_thumb:
+            item.cover_path = rel
+            item.cover_thumb_path = rel_thumb
 
     db.session.commit()
     flash(f"Updated '{item.title}'.", "success")
