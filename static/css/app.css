@@ -1,671 +1,332 @@
 /* =========================================================
-   Warm & Cozy theme (with Dark mode) + Bootstrap bridges
+   TinyChuck — Warm & Cozy theme with Dark Mode
+   (Bootstrap-friendly variables + small components)
    ========================================================= */
 
-/* -------- Theme variables -------- */
+/* ---------- Theme tokens ---------- */
 /* Light */
-:root {
-    --bg-1: #faf7f2;
-    --bg-2: #f5efe6;
-    --text: #2b2b2b;
-    --muted: #6b6b6b;
+:root{
+  --bg-1:#faf7f2;
+  --bg-2:#f5efe6;
+  --text:#2b2b2b;
+  --muted:#6b6b6b;
 
-    --card-bg: #ffffff;
-    --border: rgba(30, 10, 0, .12);
-    --shadow: 0 8px 24px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .06);
+  --card-bg:#fff;
+  --border:rgba(30,10,0,.12);
+  --shadow:0 8px 24px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.06);
 
-    --accent: #c2410c;
-    /* rust */
-    --accent-600: #9a3412;
-    --accent-100: #f9e6dd;
+  --accent:#c2410c;           /* rust */
+  --accent-600:#9a3412;
+  --accent-100:#f9e6dd;
 
-    --nav-bg: rgba(255, 253, 250, .75);
-    --nav-border: rgba(50, 20, 0, .12);
+  --nav-bg:rgba(255,253,250,.75);
+  --nav-border:rgba(50,20,0,.12);
 
-    --pill-bg: #fff;
-    --pill-border: rgba(30, 10, 0, .14);
-    --pill-active-bg: #c2410c;
-    --pill-active-text: #fff;
+  --pill-bg:#fff;
+  --pill-border:rgba(30,10,0,.14);
+  --pill-active-bg:#c2410c;
+  --pill-active-text:#fff;
+
+  /* helper surfaces (used for menus/selects/comments) */
+  --surface-1:#fff;
+  --surface-2:#f7f4ef;
+  --surface-3:#efeae2;
+
+  /* opaque layer for modals/overlays */
+  --surface-opaque:#ffffff;
+
+  /* chip bg for type icons */
+  --icon-chip-bg:#fff;
 }
 
 /* Dark */
-html[data-theme="dark"] {
-    --bg-1: #15120e;
-    --bg-2: #0f0d0a;
-    --text: #efece8;
-    --muted: #b6b0a8;
+html[data-theme="dark"]{
+  --bg-1:#15120e;
+  --bg-2:#0f0d0a;
+  --text:#efece8;
+  --muted:#b6b0a8;
 
-    --card-bg: rgba(255, 255, 255, .05);
-    --border: rgba(255, 255, 255, .12);
-    --shadow: 0 10px 26px rgba(0, 0, 0, .45), 0 1px 2px rgba(0, 0, 0, .6);
+  --card-bg:rgba(255,255,255,.05);
+  --border:rgba(255,255,255,.12);
+  --shadow:0 10px 26px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.6);
 
-    --accent: #f97316;
-    /* warm amber in dark */
-    --accent-600: #ea580c;
-    --accent-100: rgba(249, 115, 22, .12);
+  --accent:#f97316;           /* warm amber */
+  --accent-600:#ea580c;
+  --accent-100:rgba(249,115,22,.12);
 
-    --nav-bg: rgba(18, 15, 12, .65);
-    --nav-border: rgba(255, 255, 255, .08);
+  --nav-bg:rgba(18,15,12,.65);
+  --nav-border:rgba(255,255,255,.08);
 
-    --pill-bg: rgba(255, 255, 255, .05);
-    --pill-border: rgba(255, 255, 255, .12);
-    --pill-active-bg: #f97316;
-    --pill-active-text: #1a120f;
+  --pill-bg:rgba(255,255,255,.05);
+  --pill-border:rgba(255,255,255,.12);
+  --pill-active-bg:#f97316;
+  --pill-active-text:#1a120f;
+
+  --surface-1:#1b1713;
+  --surface-2:#201b16;
+  --surface-3:#2a241d;
+
+  --surface-opaque:#1b1713;
+  --icon-chip-bg:rgba(255,255,255,.08);
 }
 
-/* -------- Map theme vars to Bootstrap so its components flip too -------- */
-:root,
-html[data-theme="dark"] {
-    /* Body & text */
-    --bs-body-bg: var(--bg-1);
-    --bs-body-color: var(--text);
-    --bs-border-color: var(--border);
+/* ---------- Bridge core tokens to Bootstrap ---------- */
+:root,html[data-theme="dark"]{
+  --bs-body-bg:var(--bg-1);
+  --bs-body-color:var(--text);
+  --bs-border-color:var(--border);
 
-    /* Links */
-    --bs-link-color: var(--accent-600);
-    --bs-link-hover-color: var(--accent);
+  --bs-link-color:var(--accent-600);
+  --bs-link-hover-color:var(--accent);
 
-    /* Cards */
-    --bs-card-bg: var(--card-bg);
-    --bs-card-color: var(--text);
-    --bs-card-border-color: var(--border);
+  --bs-card-bg:var(--card-bg);
+  --bs-card-color:var(--text);
+  --bs-card-border-color:var(--border);
 
-    /* Modals */
-    --bs-modal-bg: var(--card-bg);
-    --bs-modal-color: var(--text);
-    --bs-modal-border-color: var(--border);
-    --bs-modal-header-border-color: var(--border);
-    --bs-modal-footer-border-color: var(--border);
+  --bs-modal-bg:var(--card-bg);
+  --bs-modal-color:var(--text);
+  --bs-modal-border-color:var(--border);
+  --bs-modal-header-border-color:var(--border);
+  --bs-modal-footer-border-color:var(--border);
 
-    /* Tables */
-    --bs-table-color: var(--text);
-    --bs-table-border-color: var(--border);
-    --bs-table-striped-bg: rgba(0, 0, 0, .03);
-    --bs-table-hover-bg: rgba(0, 0, 0, .04);
+  --bs-table-color:var(--text);
+  --bs-table-border-color:var(--border);
+  --bs-table-striped-bg:rgba(0,0,0,.03);
+  --bs-table-hover-bg:rgba(0,0,0,.04);
 
-    /* Forms */
-    --bs-form-control-bg: var(--card-bg);
-    --bs-form-control-color: var(--text);
-    --bs-form-control-border-color: var(--border);
-    --bs-form-select-bg: var(--card-bg);
-    --bs-form-select-color: var(--text);
-    --bs-form-select-border-color: var(--border);
-
-    /* Dropdowns */
-    --bs-dropdown-bg: var(--card-bg);
-    --bs-dropdown-color: var(--text);
-    --bs-dropdown-border-color: var(--border);
+  --bs-form-control-bg:var(--card-bg);
+  --bs-form-control-color:var(--text);
+  --bs-form-control-border-color:var(--border);
+  --bs-form-select-bg:var(--card-bg);
+  --bs-form-select-color:var(--text);
+  --bs-form-select-border-color:var(--border);
+  --bs-dropdown-bg:var(--card-bg);
+  --bs-dropdown-color:var(--text);
+  --bs-dropdown-border-color:var(--border);
 }
 
-/* -------- Background & typography -------- */
-html,
-body {
-    height: 100%;
+/* ---------- Base ---------- */
+html,body{height:100%}
+:root{color-scheme:light}
+html[data-theme="dark"]{color-scheme:dark}
+
+body{
+  background:
+    radial-gradient(1200px 800px at 20% -10%,var(--bg-2),transparent 60%),
+    radial-gradient(1200px 800px at 100% 10%,var(--bg-2),transparent 50%),
+    linear-gradient(180deg,var(--bg-1),var(--bg-1));
+  color:var(--text);
 }
 
-body {
-    background:
-        radial-gradient(1200px 800px at 20% -10%, var(--bg-2), transparent 60%),
-        radial-gradient(1200px 800px at 100% 10%, var(--bg-2), transparent 50%),
-        linear-gradient(180deg, var(--bg-1), var(--bg-1));
-    color: var(--text);
+a,.link-primary{color:var(--accent-600)}
+a:hover,.link-primary:hover{color:var(--accent)}
+
+/* ---------- Navbar ---------- */
+nav.navbar{
+  background:var(--nav-bg)!important;
+  backdrop-filter:saturate(160%) blur(10px);
+  border-bottom:1px solid var(--nav-border)!important;
+}
+nav.navbar .nav-link{color:var(--text);opacity:.85}
+nav.navbar .nav-link:hover{opacity:1;color:var(--accent-600)}
+nav.navbar .navbar-brand{color:var(--text)}
+.navbar.bg-white{background:var(--nav-bg)!important}
+.navbar.border-bottom{border-bottom-color:var(--nav-border)!important}
+
+/* ---------- Theme toggle FAB (if used) ---------- */
+.theme-fab{
+  position:fixed;right:1rem;bottom:1rem;z-index:1060;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;border-radius:12px;
+  border:1px solid var(--pill-border);
+  background:var(--pill-bg);color:var(--text);box-shadow:var(--shadow)
+}
+.theme-fab .bi{font-size:1.1rem}
+.theme-fab:hover{border-color:var(--accent);color:var(--accent-600)}
+
+/* ---------- Cards / Tables ---------- */
+.card-rounded{
+  border-radius:1rem;border:1px solid var(--border);
+  background:var(--card-bg);box-shadow:var(--shadow)
+}
+.card-rounded .card-header{background:transparent;border-bottom:1px solid var(--border)}
+.table td,.table th{vertical-align:middle}
+
+/* make .table-light readable in dark */
+.table-light{--bs-table-bg:rgba(255,255,255,.7)}
+html[data-theme="dark"] .table-light{
+  --bs-table-bg:rgba(255,255,255,.06);
+  --bs-table-color:var(--text);
+  --bs-table-border-color:var(--border);
 }
 
-/* Links */
-a,
-.link-primary {
-    color: var(--accent-600);
+/* ---------- Home hero / sections ---------- */
+.home-hero,.section-hero{
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:1rem;
+  box-shadow:var(--shadow)
 }
 
-a:hover,
-.link-primary:hover {
-    color: var(--accent);
+/* ---------- Comments UI ---------- */
+.small,.text-muted.small{font-size:.875rem}
+.comment-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:.75rem;padding:.75rem 1rem
+}
+.comment-card+.comment-card{margin-top:.75rem}
+.comment-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem}
+.comments-panel{display:flex;flex-direction:column;min-height:0}
+.comments-scroll{overflow:auto;min-height:0}
+@media(min-width:992px){.comments-scroll{max-height:calc(100vh - 300px)}}
+@media(max-width:991.98px){.comments-scroll{max-height:calc(100vh - 360px)}}
+
+.comments-ui .comments-composer{
+  margin:-1rem -1rem .75rem;padding:.75rem 1rem;
+  background:var(--card-bg);border-bottom:1px solid var(--border);
+  border-radius:.5rem .5rem 0 0;box-shadow:0 1px 0 rgba(0,0,0,.02)
 }
 
-/* -------- Navbar polish (works even if _navbar.html has bg-white) -------- */
-nav.navbar {
-    background: var(--nav-bg) !important;
-    /* force over any bg-* utility */
-    backdrop-filter: saturate(160%) blur(10px);
-    border-bottom: 1px solid var(--nav-border) !important;
+/* reactions + delete */
+.btn-react{
+  display:inline-flex;align-items:center;gap:.25rem;
+  padding:.15rem .4rem;line-height:1;font-size:.9rem;
+  border:1px solid var(--border);background:var(--card-bg);
+  border-radius:.5rem
 }
-
-nav.navbar .nav-link {
-    color: var(--text);
-    opacity: .85;
+.btn-react .bi{font-size:1rem;line-height:1}
+.btn-react .count{display:none}
+.btn-react.has-count .count{display:inline}
+.btn-react[aria-pressed="true"]{background:#eef3ff;border-color:#cfe0ff}
+html[data-theme="dark"] .btn-react[aria-pressed="true"]{
+  background:rgba(125,160,255,.16);border-color:rgba(125,160,255,.32)
 }
+.btn-delete{border:0;background:transparent;color:#dc3545;padding:0;line-height:1;font-size:1rem}
+.btn-delete:hover{color:#b02a37}
 
-nav.navbar .nav-link:hover {
-    opacity: 1;
-    color: var(--accent-600);
+/* Slightly darker “load more” button */
+.btn-load-more{background:#f1f3f5;border:1px solid var(--border);color:#495057;border-radius:.5rem}
+html[data-theme="dark"] .btn-load-more{background:rgba(255,255,255,.06);color:var(--text)}
+
+/* ---------- Type pills ---------- */
+.type-pills{display:flex;gap:.5rem;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:.5rem}
+.type-pills .pill{
+  display:inline-flex;align-items:center;gap:.45rem;
+  border:1px solid var(--pill-border);background:var(--pill-bg);color:var(--text);
+  padding:.35rem .7rem;border-radius:999px;text-decoration:none;white-space:nowrap
 }
+.type-pills .pill .bi{font-size:1rem;opacity:.9}
+.type-pills .pill:hover{border-color:var(--accent)}
+.type-pills .pill.active{background:var(--pill-active-bg);border-color:var(--pill-active-bg);color:var(--pill-active-text)}
 
-nav.navbar .navbar-brand {
-    color: var(--text);
-}
+/* ---------- Utilities / polish ---------- */
+img[loading="lazy"]{background:#f0f2f4}
+a.btn:hover,button.btn:hover{filter:brightness(.98)}
+.w-18rem{max-width:18rem}
+.transition{transition:.15s ease-in-out}
+.modal-backdrop.show{opacity:.55}
 
-/* If your partial still has bg-white/border-bottom, neutralize them */
-.navbar.bg-white {
-    background: var(--nav-bg) !important;
-}
-
-.navbar.border-bottom {
-    border-bottom-color: var(--nav-border) !important;
-}
-
-/* -------- Floating theme toggle (fallback if navbar lacks one) -------- */
-.theme-fab {
-    position: fixed;
-    right: 1rem;
-    bottom: 1rem;
-    z-index: 1060;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    border: 1px solid var(--pill-border);
-    background: var(--pill-bg);
-    color: var(--text);
-    box-shadow: var(--shadow);
-}
-
-.theme-fab .bi {
-    font-size: 1.1rem;
-}
-
-.theme-fab:hover {
-    border-color: var(--accent);
-    color: var(--accent-600);
-}
-
-/* -------- Cards / tables / small polish -------- */
-.card-rounded {
-    border-radius: 1rem;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-    background: var(--card-bg);
-}
-
-.card-rounded .card-header {
-    background: transparent;
-    border-bottom: 1px solid var(--border);
-}
-
-.table td,
-.table th {
-    vertical-align: middle;
-}
-
-/* Make .table-light look right in dark mode */
-.table-light {
-    --bs-table-bg: rgba(255, 255, 255, .7);
-}
-
-html[data-theme="dark"] .table-light {
-    --bs-table-bg: rgba(255, 255, 255, .06);
-    --bs-table-color: var(--text);
-    --bs-table-border-color: var(--border);
-}
-
-/* Buttons/links subtle hover */
-a.btn:hover,
-button.btn:hover {
-    filter: brightness(0.98);
-}
-
-/* Image helpers */
-img[loading="lazy"] {
-    background: #f0f2f4;
-}
-
-/* -------- Home hero / generic header block -------- */
-.home-hero,
-.section-hero {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 1rem;
-    box-shadow: var(--shadow);
-}
-
-/* -------- Comments UI (shared) -------- */
-.comment-item {
-    padding: .5rem 0;
-    border-top: 1px solid rgba(0, 0, 0, .06);
-}
-
-html[data-theme="dark"] .comment-item {
-    border-top-color: rgba(255, 255, 255, .08);
-}
-
-.comment-meta {
-    font-size: .9rem;
-}
-
-.modal-body.scrollable {
-    max-height: 70vh;
-    overflow: auto;
-}
-
-.small,
-.text-muted.small {
-    font-size: .875rem;
-}
-
-/* Composer pinned header inside comments panel */
-.comments-ui .comments-composer {
-    margin: -1rem -1rem .75rem;
-    padding: .75rem 1rem;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-    border-radius: .5rem .5rem 0 0;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
-}
-
-/* Panel layout */
-.comments-panel {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.comments-scroll {
-    overflow: auto;
-    min-height: 0;
-}
-
-/* viewport-based max-height so modal keeps natural size */
-@media (min-width: 992px) {
-    .comments-scroll {
-        max-height: calc(100vh - 300px);
-    }
-}
-
-@media (max-width: 991.98px) {
-    .comments-scroll {
-        max-height: calc(100vh - 360px);
-    }
-}
-
-/* Comment cards & buttons (compact) */
-.comment-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: .75rem;
-    padding: .75rem 1rem;
-}
-
-.comment-card+.comment-card {
-    margin-top: .75rem;
-}
-
-.comment-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: .5rem;
-}
-
-.btn-icon {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    padding: .25rem .5rem;
-    border: 1px solid var(--border);
-    background: #f8f9fa;
-    border-radius: .5rem;
-}
-
-html[data-theme="dark"] .btn-icon {
-    background: rgba(255, 255, 255, .06);
-}
-
-.btn-load-more {
-    background: #f1f3f5;
-    border: 1px solid var(--border);
-    color: #495057;
-    border-radius: .5rem;
-}
-
-html[data-theme="dark"] .btn-load-more {
-    background: rgba(255, 255, 255, .06);
-    color: var(--text);
-}
-
-/* Reactions + delete */
-.btn-react {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    padding: .15rem .4rem;
-    line-height: 1;
-    font-size: .9rem;
-    border: 1px solid var(--border);
-    background: var(--card-bg);
-    border-radius: .5rem;
-}
-
-.btn-react .bi {
-    font-size: 1rem;
-    line-height: 1;
-}
-
-.btn-react .count {
-    display: none;
-}
-
-.btn-react.has-count .count {
-    display: inline;
-}
-
-/* only show if >0 */
-.btn-react[aria-pressed="true"] {
-    background: #eef3ff;
-    border-color: #cfe0ff;
-}
-
-html[data-theme="dark"] .btn-react[aria-pressed="true"] {
-    background: rgba(125, 160, 255, .16);
-    border-color: rgba(125, 160, 255, .32);
-}
-
-.btn-delete {
-    border: 0;
-    background: transparent;
-    color: #dc3545;
-    padding: 0;
-    line-height: 1;
-    font-size: 1rem;
-}
-
-.btn-delete:hover {
-    color: #b02a37;
-}
-
-/* -------- Optional: type pills -------- */
-.type-pills {
-    display: flex;
-    gap: .5rem;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: .5rem;
-}
-
-.type-pills .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    border: 1px solid var(--pill-border);
-    background: var(--pill-bg);
-    color: var(--text);
-    padding: .35rem .7rem;
-    border-radius: 999px;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.type-pills .pill .bi {
-    font-size: 1rem;
-    opacity: .9;
-}
-
-.type-pills .pill:hover {
-    border-color: var(--accent);
-}
-
-.type-pills .pill.active {
-    background: var(--pill-active-bg);
-    border-color: var(--pill-active-bg);
-    color: var(--pill-active-text);
-}
-
-/* -------- Utilities -------- */
-.w-9rem {
-    width: 9rem;
-}
-
-.w-18rem {
-    max-width: 18rem;
-}
-
-.transition {
-    transition: .15s ease-in-out;
-}
-
-/* Modal backdrop a hair darker in light, same in dark */
-.modal-backdrop.show {
-    opacity: .55;
-}
-
-/* =========================================================
-   Dark-mode rescue overrides for Bootstrap utilities
-   & page-specific elements (append to end of app.css)
-   ========================================================= */
-
-/* muted text everywhere (navbar, cards, tables, etc.) */
+/* ---------- Dark-mode safety passes ---------- */
 html[data-theme="dark"] .text-muted,
 html[data-theme="dark"] .navbar .text-muted,
 html[data-theme="dark"] .card .text-muted,
-html[data-theme="dark"] .table .text-muted {
-    color: var(--muted) !important;
-}
+html[data-theme="dark"] .table .text-muted{color:var(--muted)!important}
 
-/* wipe out hardcoded light backgrounds when dark */
 html[data-theme="dark"] .bg-white,
-html[data-theme="dark"] .bg-light {
-    background-color: var(--card-bg) !important;
-}
+html[data-theme="dark"] .bg-light{background-color:var(--card-bg)!important}
 
-/* common surfaces in dark */
 html[data-theme="dark"] .home-hero,
 html[data-theme="dark"] .type-card,
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .dropdown-menu,
-html[data-theme="dark"] .modal-content {
-    background-color: var(--card-bg) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
+html[data-theme="dark"] .modal-content{
+  background-color:var(--card-bg)!important;
+  color:var(--text)!important;border-color:var(--border)!important
 }
 
-/* form controls + placeholder */
-.form-control,
-.form-select {
-    background: var(--card-bg);
-    color: var(--text);
-    border-color: var(--border);
+/* forms */
+.form-control,.form-select{
+  background:var(--card-bg);color:var(--text);border-color:var(--border)
 }
-
-.form-control:focus,
-.form-select:focus {
-    background: var(--card-bg);
-    color: var(--text);
-    border-color: var(--accent-600);
-    box-shadow: 0 0 0 .2rem rgba(249, 115, 22, .15);
+.form-control:focus,.form-select:focus{
+  background:var(--card-bg);color:var(--text);
+  border-color:var(--accent-600);box-shadow:0 0 0 .2rem rgba(249,115,22,.15)
 }
+.form-control::placeholder{color:var(--muted);opacity:.9}
 
-.form-control::placeholder {
-    color: var(--muted);
-    opacity: .9;
+/* navbar text & badges */
+.navbar .nav-link,.navbar .navbar-brand{color:var(--text)!important}
+.badge,.navbar .badge{color:var(--text)}
+
+/* type-card icon chip */
+.type-card .type-icon{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:var(--icon-chip-bg);border:1px solid var(--border);color:var(--text)
 }
+.type-card .type-icon .bi{color:var(--text);opacity:.9}
 
-/* navbar text (brand + links + "signed in as") */
-.navbar .nav-link,
-.navbar .navbar-brand {
-    color: var(--text) !important;
-}
-
-.navbar .badge,
-.badge {
-    color: var(--text);
-}
-
-/* media type menu cards — icon chip visible in dark */
-.type-card .type-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--icon-chip-bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-}
-
-:root {
-    --icon-chip-bg: #fff;
-}
-
-html[data-theme="dark"] {
-    --icon-chip-bg: rgba(255, 255, 255, .08);
-}
-
-.type-card .type-icon .bi {
-    color: var(--text);
-    opacity: .9;
-}
-
-/* home “Welcome” block & image placeholders */
-.home-card-img.placeholder,
-.home-hero {
-    background: var(--card-bg) !important;
-    color: var(--text) !important;
-}
-
-/* table header that uses .table-light */
-html[data-theme="dark"] thead.table-light th {
-    background-color: rgba(255, 255, 255, .06) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
+/* table header when using .table-light */
+html[data-theme="dark"] thead.table-light th{
+  background-color:rgba(255,255,255,.06)!important;color:var(--text)!important;border-color:var(--border)!important
 }
 
 /* outline buttons in dark */
-html[data-theme="dark"] .btn-outline-secondary {
-    color: var(--text);
-    border-color: var(--border);
+html[data-theme="dark"] .btn-outline-secondary{color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .btn-outline-secondary:hover{border-color:var(--accent-600);color:var(--accent-600)}
+
+/* links in tables */
+html[data-theme="dark"] table a{color:var(--accent-600)}
+html[data-theme="dark"] table a:hover{color:var(--accent)}
+
+/* ---------- Opaque modals/overlays ---------- */
+.modal-content,.modal-header,.modal-body,.modal-footer{
+  background-color:var(--surface-opaque)!important;
+  color:var(--text)!important;border-color:var(--border)!important
+}
+.dropdown-menu,.offcanvas,.toast{
+  background-color:var(--surface-opaque)!important;
+  color:var(--text)!important;border-color:var(--border)!important
+}
+.modal .card,.modal .card-rounded{background-color:var(--surface-opaque)!important}
+
+/* ---------- Native selects & dropdown menus in dark ---------- */
+/* Hint browsers to draw the open native select panel in dark */
+html[data-theme="dark"] .form-select{color-scheme:dark;background-color:var(--card-bg);color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .form-select option{
+  background-color:var(--surface-2)!important;color:var(--text)!important
+}
+html[data-theme="dark"] .form-select option:hover,
+html[data-theme="dark"] .form-select option:focus,
+html[data-theme="dark"] .form-select option:checked{
+  background-color:var(--surface-3)!important;color:var(--text)!important
 }
 
-html[data-theme="dark"] .btn-outline-secondary:hover {
-    border-color: var(--accent-600);
-    color: var(--accent-600);
+/* Dropdown (Bootstrap) hover/active */
+html[data-theme="dark"] .dropdown-item{color:var(--text)}
+html[data-theme="dark"] .dropdown-item:hover,
+html[data-theme="dark"] .dropdown-item.active{
+  background:var(--surface-3);color:var(--text)
 }
 
-/* links inside tables stay readable in dark */
-html[data-theme="dark"] table a {
-    color: var(--accent-600);
+/* File input + helper text in dark */
+html[data-theme="dark"] .form-text{color:var(--muted)}
+html[data-theme="dark"] .form-control[type="file"]::file-selector-button{
+  background:var(--surface-3);color:var(--text);border-color:var(--border)
 }
 
-html[data-theme="dark"] table a:hover {
-    color: var(--accent);
-}
+/* ---------- Dark tweaks for comments & tables ---------- */
+html[data-theme="dark"] .comment-card{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+html[data-theme="dark"] .comments-ui{background:var(--surface-1);border-bottom:1px solid var(--border)}
+html[data-theme="dark"] .btn.btn-react{border-color:var(--border);color:var(--muted);background:transparent}
+html[data-theme="dark"] .btn.btn-react.has-count{color:var(--text)}
+html[data-theme="dark"] .btn.btn-react:hover{background:var(--surface-3)}
 
-/* card descriptions on Home */
-.card .text-muted {
-    color: var(--muted) !important;
+html[data-theme="dark"] .table{
+  --bs-table-color:var(--text);
+  --bs-table-striped-color:var(--text);
+  --bs-table-hover-color:var(--text);
+  --bs-table-bg:transparent;
+  --bs-table-striped-bg:rgba(255,255,255,.03);
+  --bs-table-hover-bg:rgba(255,255,255,.05);
 }
-
-/* keep the small search input width helper */
-.w-18rem {
-    max-width: 18rem;
-}
-
-/* ===== Opaque modal surface so content isn't see-through ===== */
-:root {
-    --surface-opaque: #ffffff;
-}
-
-/* light */
-html[data-theme="dark"] {
-    --surface-opaque: #1b1713;
-}
-
-/* warm charcoal */
-
-/* Make Bootstrap use the opaque surface in modals */
-.modal-content,
-.modal-header,
-.modal-body,
-.modal-footer {
-    background-color: var(--surface-opaque) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-}
-
-/* Dropdowns/menus that appear over the backdrop should be opaque too */
-.dropdown-menu,
-.offcanvas,
-.toast {
-    background-color: var(--surface-opaque) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-}
-
-/* If a modal contains cards, keep those opaque as well */
-.modal .card,
-.modal .card-rounded {
-    background-color: var(--surface-opaque) !important;
-}
-
-/* Native UI (select dropdown panels, inputs, scrollbars) should follow your theme */
-:root { color-scheme: light; }
-
-:root[data-theme="dark"],
-html[data-theme="dark"],
-body[data-theme="dark"],
-html.theme-dark,
-body.theme-dark {
-  color-scheme: dark;         /* This is the key for the OPEN select panel */
-}
-
-/* Keep closed controls consistent too (uses your existing variables) */
-[data-theme="dark"] .form-select,
-[data-theme="dark"] .form-control,
-[data-theme="dark"] .form-check-input {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-/* (Some engines also honor this inside the options list) */
-.form-select option {
-  color: var(--text);
-  background: var(--surface-2);
-}
-
-/* Faux-select visuals (works in both themes) */
-.faux-select .btn.form-select {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-color: var(--border);
-  width: 100%;
-  text-align: left;
-}
-.faux-select .btn.form-select:focus {
-  box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
-}
-
-/* Dropdown menu theme-aware */
-[data-bs-theme="dark"] .dropdown-menu {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-color: var(--border);
-}
-[data-bs-theme="dark"] .dropdown-item {
-  color: var(--text);
-}
-[data-bs-theme="dark"] .dropdown-item:hover,
-[data-bs-theme="dark"] .dropdown-item.active {
-  background-color: var(--surface-3);
-  color: var(--text);
-}
-
-/* Minor polish for the helper text + file button in dark mode */
-[data-bs-theme="dark"] .form-text {
-  color: var(--muted);
-}
-[data-bs-theme="dark"] .form-control[type="file"]::file-selector-button {
-  background-color: var(--surface-3);
-  color: var(--text);
-  border-color: var(--border);
-}
+html[data-theme="dark"] .table thead th{color:var(--muted)}
