@@ -696,21 +696,23 @@ def tracker():
             type_counts=type_counts,
             type_filter=None,
             rows=[],
-            q=""
+            q="",
+            tag=""
         )
 
     # List screen for chosen type (no status/rating filters; alpha sort)
     q = (request.args.get("q") or "").strip()
+    tags = [t.strip().lower() for t in request.args.getlist("tag") if t.strip()]
 
     query = Item.query.filter(Item.media_type == type_filter)
     if q:
         like = f"%{q}%"
         query = query.filter(or_(Item.title.ilike(like), Item.tags.ilike(like), Item.notes.ilike(like)))
 
-    rows = (query
-            .order_by(Item.title.asc())  # alphabetical since "Added" is not displayed
-            .options(subqueryload(Item.comments))
-            .all())
+    for t in tags:
+        query = query.filter(Item.tags.ilike(f"%{t}%"))
+
+    rows = query.order_by(Item.title.asc()).all()
 
     # hydrate reactions for each item's comments
     uid = session.get("user_id")
@@ -724,6 +726,7 @@ def tracker():
         type_filter=type_filter,
         type_counts=type_counts,
         q=q,
+        tags=tags,
         rows=rows
     )
 

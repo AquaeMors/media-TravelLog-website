@@ -39,6 +39,32 @@
     }
   })();
 
+  // === Theme bridge: keep Bootstrap + native controls in sync with YOUR toggle ===
+(function themeBridge() {
+  const root = document.documentElement;
+  const body = document.body;
+
+  // Works with either: <html data-theme="dark"> OR <body data-theme="dark"> OR .theme-dark class
+  const getTheme = () =>
+    (root.getAttribute('data-theme') ||
+     body.getAttribute('data-theme')  ||
+     (root.classList.contains('theme-dark') || body.classList.contains('theme-dark') ? 'dark' : 'light'));
+
+  const apply = () => {
+    const t = getTheme();
+    // Bootstrap 5.3 theme token
+    body.setAttribute('data-bs-theme', t === 'dark' ? 'dark' : 'light');
+    // Make native controls (open <select> panel) adopt the right palette immediately
+    document.documentElement.style.colorScheme = (t === 'dark' ? 'dark' : 'light');
+  };
+
+  // React to your toggle changing classes/attributes
+  new MutationObserver(apply).observe(root, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+  new MutationObserver(apply).observe(body, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+  window.addEventListener('DOMContentLoaded', apply);
+  apply();
+})();
+
   /* =========================================================
      Re-open modal after POST/redirect if form had data-keep-modal
      ========================================================= */
@@ -160,4 +186,80 @@
     updateTimeagos();
     setInterval(updateTimeagos, 60_000);
   });
+})();
+
+// Faux-select shim: themed dropdown that mirrors a native <select>
+// (Keeps form submission working; original <select> remains in the DOM.)
+(function () {
+  function enhanceSelect(select) {
+    if (select._enhanced) return;
+    select._enhanced = true;
+
+    // container
+    const wrap = document.createElement('div');
+    wrap.className = 'dropdown faux-select w-100';
+
+    // button that shows the current value
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn form-select d-flex justify-content-between align-items-center';
+    btn.setAttribute('data-bs-toggle', 'dropdown');
+    btn.setAttribute('aria-expanded', 'false');
+
+    const label = document.createElement('span');
+    label.className = 'faux-label flex-grow-1 text-truncate';
+    label.textContent = select.options[select.selectedIndex]?.text || '—';
+
+    const caret = document.createElement('i');
+    caret.className = 'bi bi-caret-down-fill ms-2 opacity-50';
+
+    btn.appendChild(label);
+    btn.appendChild(caret);
+
+    // menu
+    const menu = document.createElement('ul');
+    menu.className = 'dropdown-menu w-100';
+
+    Array.from(select.options).forEach((opt) => {
+      const li = document.createElement('li');
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'dropdown-item' + (opt.disabled ? ' disabled' : '');
+      item.textContent = opt.text;
+      item.dataset.value = opt.value;
+      if (opt.selected) item.classList.add('active');
+
+      item.addEventListener('click', () => {
+        if (opt.disabled) return;
+        select.value = opt.value;
+        label.textContent = opt.text;
+        // update active UI
+        menu.querySelectorAll('.dropdown-item.active').forEach((a) => a.classList.remove('active'));
+        item.classList.add('active');
+        // bubble change for any listeners
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      li.appendChild(item);
+      menu.appendChild(li);
+    });
+
+    // insert before the select; keep select for submission
+    select.insertAdjacentElement('beforebegin', wrap);
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+
+    // visually hide the select but leave it focusable via form APIs if needed
+    select.classList.add('visually-hidden');
+    select.tabIndex = -1;
+  }
+
+  function enhanceWithin(root) {
+    root.querySelectorAll('select.form-select[data-faux-select]').forEach(enhanceSelect);
+  }
+
+  // enhance on page load for any already-present selects
+  window.addEventListener('DOMContentLoaded', () => enhanceWithin(document));
+  // enhance each modal the moment it opens
+  document.addEventListener('shown.bs.modal', (e) => enhanceWithin(e.target));
 })();

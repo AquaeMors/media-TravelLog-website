@@ -606,3 +606,66 @@ html[data-theme="dark"] {
 .modal .card-rounded {
     background-color: var(--surface-opaque) !important;
 }
+
+/* Native UI (select dropdown panels, inputs, scrollbars) should follow your theme */
+:root { color-scheme: light; }
+
+:root[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"],
+html.theme-dark,
+body.theme-dark {
+  color-scheme: dark;         /* This is the key for the OPEN select panel */
+}
+
+/* Keep closed controls consistent too (uses your existing variables) */
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-check-input {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* (Some engines also honor this inside the options list) */
+.form-select option {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* Faux-select visuals (works in both themes) */
+.faux-select .btn.form-select {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+  width: 100%;
+  text-align: left;
+}
+.faux-select .btn.form-select:focus {
+  box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
+}
+
+/* Dropdown menu theme-aware */
+[data-bs-theme="dark"] .dropdown-menu {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+[data-bs-theme="dark"] .dropdown-item {
+  color: var(--text);
+}
+[data-bs-theme="dark"] .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-item.active {
+  background-color: var(--surface-3);
+  color: var(--text);
+}
+
+/* Minor polish for the helper text + file button in dark mode */
+[data-bs-theme="dark"] .form-text {
+  color: var(--muted);
+}
+[data-bs-theme="dark"] .form-control[type="file"]::file-selector-button {
+  background-color: var(--surface-3);
+  color: var(--text);
+  border-color: var(--border);
+}

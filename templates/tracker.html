@@ -51,16 +51,22 @@
   } %}
   <nav class="type-pills mb-3">
     {% for t in MEDIA_TYPES %}
-    <a class="pill {% if t==type_filter %}active{% endif %}" href="/tracker?type={{ t }}">
+    <a class="pill{% if t==type_filter %} active{% endif %}"
+      href="/tracker?type={{ t }}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}">
       <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
       <span class="text-capitalize">{{ t }}</span>
     </a>
     {% endfor %}
   </nav>
 
+
   <!-- Filters (q only) -->
   <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
     <input type="hidden" name="type" value="{{ type_filter }}">
+    {% for tt in tags %}
+    <input type="hidden" name="tag" value="{{ tt }}">
+    {% endfor %}
+    <input type="hidden" name="tag" value="{{ tag|default('', true) }}">
     <div class="col-auto">
       <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
         placeholder="Search title/tags/notes">
@@ -68,7 +74,27 @@
     <div class="col-auto">
       <button class="btn btn-outline-primary btn-sm">Filter</button>
     </div>
+    {% if tags %}
+    <div class="col-12 d-flex flex-wrap gap-2 mt-1">
+      {% for tt in tags %}
+      <a class="pill active"
+        href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for t2 in tags if t2!=tt %}&tag={{ t2|urlencode }}{% endfor %}">
+        {{ tt }} <i class="bi bi-x-lg ms-1"></i>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- (optional) show active tag chip with “clear” -->
+    {% if tag %}
+    <div class="col-auto">
+      <a class="pill active" href="{{ url_for('tracker') }}?type={{ type_filter }}&q={{ q|urlencode }}">
+        {{ tag }} <i class="bi bi-x-lg ms-1"></i>
+      </a>
+    </div>
+    {% endif %}
   </form>
+
 
   <div class="table-responsive">
     <table class="table table-hover align-middle">
@@ -100,7 +126,28 @@
           <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
           {% endif %}
 
-          <td class="text-muted">{{ r.tags or '' }}</td>
+          <td class="text-muted">
+            {% if r.tags %}
+            <div class="d-flex flex-wrap gap-1">
+              {% for tg in r.tags.split(',') %}
+              {% set t = tg.strip() %}
+              {% if t %}
+              {% set t_l = t|lower %}
+              {% if t_l in tags %}
+              <span class="pill tag-pill disabled" aria-disabled="true" title="Already filtering">{{ t }}</span>
+              {% else %}
+              <a class="pill tag-pill"
+                href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}&tag={{ t_l|urlencode }}">
+                {{ t }}
+              </a>
+              {% endif %}
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+          </td>
+
+
 
           <td class="text-end text-nowrap">
             <button class="btn btn-sm btn-outline-secondary" data-row-ignore data-bs-toggle="modal"
@@ -139,7 +186,7 @@
 
               <div class="col-md-6">
                 <label class="form-label">Type</label>
-                <select id="add-media-type" name="media_type" class="form-select">
+                <select id="add-media-type" name="media_type" class="form-select" data-faux-select>
                   {% for t in MEDIA_TYPES %}
                   <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
                   {% endfor %}
@@ -184,7 +231,7 @@
               <!-- Optional release status -->
               <div class="col-md-6" data-field="release_status">
                 <label class="form-label">Release status (optional)</label>
-                <select name="release_status" class="form-select">
+                <select name="release_status" class="form-select" data-faux-select>
                   <option value="">—</option>
                   <option>Ongoing</option>
                   <option>Completed</option>
@@ -387,7 +434,7 @@
 
               <div class="col-md-6">
                 <label class="form-label">Type</label>
-                <select name="media_type" class="form-select js-type">
+                <select name="media_type" class="form-select js-type" data-faux-select>
                   {% for t in MEDIA_TYPES %}
                   <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
                   {% endfor %}
@@ -435,7 +482,7 @@
               <!-- Release status -->
               <div class="col-md-6" data-field="release_status">
                 <label class="form-label">Release status (optional)</label>
-                <select name="release_status" class="form-select">
+                <select name="release_status" class="form-select" data-faux-select>
                   <option value="">—</option>
                   <option {% if r.release_status=='Ongoing' %}selected{% endif %}>Ongoing</option>
                   <option {% if r.release_status=='Completed' %}selected{% endif %}>Completed</option>
