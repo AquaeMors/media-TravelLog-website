@@ -18,8 +18,15 @@
 <div class="container py-4">
   <div class="d-flex align-items-center justify-content-between mb-2">
     <div>
-      <h1 class="h4 mb-1">Tags — <span class="text-capitalize">{{ type_filter }}</span></h1>
-      <a href="{{ url_for('tracker') }}?type={{ type_filter }}" class="small link-primary">Back to list</a>
+      <h1 class="h4 mb-1">
+        Tags
+        {% if type_filter %}
+          — <span class="text-capitalize">{{ type_filter }}</span>
+        {% else %}
+          — All types
+        {% endif %}
+      </h1>
+      <a href="{{ url_for('tracker', type=type_filter or None) }}" class="small link-primary">Back to list</a>
     </div>
   </div>
 
@@ -54,7 +61,7 @@
         <div class="tag-cloud">
           {% for tag, count in tag_counts.items() %}
             <a class="pill tag-pill"
-               href="{{ url_for('tracker') }}?type={{ type_filter }}&tag={{ tag|urlencode }}">
+               href="{{ url_for('tracker') }}?type={{ type_filter or 'book' }}&tag={{ tag|urlencode }}">
               {{ tag }}
               <span class="count">{{ count }}</span>
             </a>

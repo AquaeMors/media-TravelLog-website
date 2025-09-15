@@ -36,12 +36,12 @@
   </div>
 
   {% else %}
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <div>
-      <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
-      <a href="{{ url_for('tracker_tags') }}?type={{ type_filter }}" class="small link-primary ms-2">Tags</a>
+  <div>
+    <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
+    <div class="small d-flex align-items-center gap-3">
+      <a href="{{ url_for('tracker') }}" class="link-primary">All types</a>
+      <a href="{{ url_for('tracker_tags', type=type_filter) }}" class="link-primary">Tags</a>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
   </div>
 
   <!-- Media type pills -->

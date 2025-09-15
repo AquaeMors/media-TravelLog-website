@@ -610,32 +610,71 @@ def admin_user_request_approve(req_id):
 @app.get("/tracker/tags")
 @login_required
 def tracker_tags():
-    media_type = (request.args.get("type") or "").strip().lower()
-    q = (request.args.get("q") or "").strip()
+    """
+    Tags directory for the Media Tracker.
+    Supports optional ?type=<media_type> and ?q=<search>.
+    """
+    # inputs
+    type_filter = (request.args.get("type") or "").strip().lower()
+    q = (request.args.get("q") or "").strip().lower()
 
+    # base query
     qry = Item.query
-    if media_type in MEDIA_TYPES:
-        qry = qry.filter(Item.media_type == media_type)
+    if type_filter in MEDIA_TYPES:
+        qry = qry.filter(Item.media_type == type_filter)
 
     if q:
         like = f"%{q}%"
-        qry = qry.filter(or_(Item.title.ilike(like),
-                             Item.tags.ilike(like),
+        qry = qry.filter(or_(Item.tags.ilike(like),
+                             Item.title.ilike(like),
                              Item.notes.ilike(like)))
 
     items = qry.all()
 
-    type_counts = {t: Item.query.filter(Item.media_type == t).count() for t in MEDIA_TYPES}
+    # counts for the type pills (same as tracker list/menu)
+    type_counts = {
+        t: db.session.query(func.count(Item.id)).filter(Item.media_type == t).scalar() or 0
+        for t in MEDIA_TYPES
+    }
 
-    tag_counts = collect_tag_counts(items)
+    # build tag counts from the items we just pulled
+    counts = Counter()
+    for it in items:
+        if not it.tags:
+            continue
+        for raw in it.tags.split(","):
+            tag = (raw or "").strip().lower()
+            if not tag:
+                continue
+            counts[tag] += 1
+
+    # if user typed q=, also filter the tag list itself
+    if q:
+        counts = Counter({tag: n for tag, n in counts.items() if q in tag})
+
+    # group by first letter for headings (A, B, …, #)
+    grouped = {}
+    for tag, n in counts.items():
+        letter = tag[:1].upper() if tag else "#"
+        if not letter.isalpha():
+            letter = "#"
+        grouped.setdefault(letter, []).append((tag, n))
+
+    # sort groups and entries
+    letters = sorted(grouped.keys())
+    for L in letters:
+        grouped[L].sort(key=lambda x: x[0])
 
     return render_template(
         "tracker_tags.html",
         MEDIA_TYPES=MEDIA_TYPES,
-        type_filter=(media_type if media_type in MEDIA_TYPES else 'book'),
+        type_filter=(type_filter if type_filter in MEDIA_TYPES else ""),
         type_counts=type_counts,
-        q=q,
-        tag_counts=tag_counts
+        q=(request.args.get("q") or ""),
+        # both a flat dict and a grouped view (use whichever you like in the template)
+        tag_counts=dict(sorted(counts.items())),  # {'action': 12, ...}
+        letters=letters,                          # ['#','A','B',...]
+        grouped=grouped                           # {'A': [('action',12),...], ...}
     )
 
 
