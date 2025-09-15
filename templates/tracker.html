@@ -39,7 +39,7 @@
   <div class="d-flex align-items-center justify-content-between mb-2">
     <div>
       <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
-      <a href="/tracker" class="small link-primary">All types</a>
+      <a href="{{ url_for('tracker_tags') }}?type={{ type_filter }}" class="small link-primary ms-2">Tags</a>
     </div>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
   </div>
@@ -323,7 +323,24 @@
                     {% endif %}
 
                     <dt class="col-5">Tags</dt>
-                    <dd class="col-7">{{ r.tags or '—' }}</dd>
+                    <dd class="col-7">
+                      {% if r.tags %}
+                      <div class="d-flex flex-wrap gap-1">
+                        {% for tg in r.tags.split(',') %}
+                        {% set t = tg.strip() %}
+                        {% if t %}
+                        <a class="pill tag-pill"
+                          href="{{ url_for('tracker') }}?type={{ r.media_type }}&tag={{ t|lower|urlencode }}">
+                          {{ t }}
+                        </a>
+                        {% endif %}
+                        {% endfor %}
+                      </div>
+                      {% else %}
+                      —
+                      {% endif %}
+                    </dd>
+
                   </dl>
                   {% if r.notes %}
                   <hr>

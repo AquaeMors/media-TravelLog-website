@@ -1,125 +1,240 @@
-/* =========================================
-   Media Tracker – page-specific styles only
-   (shared theme & component rules live in app.css)
-   ========================================= */
+/* =========================================================
+   Media Tracker (page-specific)
+   ========================================================= */
 
-/* Type selection cards */
-.type-card:hover{
+/* ---------- Type selection cards on the menu screen ---------- */
+.type-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
 }
 
-/* ---------- Modal layout ---------- */
-.tracker-modal .modal-dialog{
-  width: min(96vw, 1200px);
-  max-width: none;
+.type-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--icon-chip-bg, #f1f3f5);
+  font-weight: 700;
 }
-.tracker-modal .modal-body{
+
+.type-icon i {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* ---------- Table tweaks ---------- */
+.table td,
+.table th {
+  vertical-align: middle;
+  color: var(--text);
+}
+
+/* ---------- Uniform modal size and internal scrolling ---------- */
+.tracker-modal .modal-dialog {
+  max-width: none;
+  width: min(96vw, 1200px);
+}
+
+.tracker-modal .modal-body {
   height: calc(100vh - 220px);
 }
 
-/* Split column cards in the item modal */
 .tracker-split,
-.tracker-split .card{height:100%}
-.tracker-split .card > .card-body{overflow:auto}
+.tracker-split .card {
+  height: 100%;
+}
 
-/* Slightly smaller comment body text (base look comes from app.css) */
-.comment-card{font-size:.95rem}
+.tracker-split .card > .card-body {
+  overflow: auto;
+}
 
-/* ---------- Clickable list rows (lift on hover) ---------- */
-.table tbody tr.media-row{
-  cursor:pointer;
-  transform-origin:center;
+/* ---------- Comments panel & cards (theme-aware) ---------- */
+.comments-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.comments-ui {
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 2;
+  padding-top: .25rem;
+  box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  border-bottom: 1px solid var(--border);
+}
+
+.comments-scroll {
+  overflow: auto;
+  padding-top: .25rem;
+}
+
+.comment-card {
+  font-size: 0.95rem;
+  padding: .75rem;
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.comment-card + .comment-card { margin-top: .5rem; }
+.comment-body { line-height: 1.35; }
+
+.comment-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: .5rem;
+}
+
+/* Reactions (small, simple arrows) */
+.btn-react {
+  padding: .125rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  background: var(--card-bg);
+  color: var(--text);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .9rem;
+}
+.btn-react .count { display: none; margin-left: .25rem; min-width: .75rem; text-align: center; }
+.btn-react.has-count .count { display: inline-block; }
+
+.btn-delete {
+  border: 0;
+  background: transparent;
+  color: #dc3545;
+}
+
+/* ---------- Clickable table rows with soft lift on hover ---------- */
+.table tbody tr.media-row {
+  cursor: pointer;
+  transform-origin: center;
   transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
 }
 
-/* rounded corners per-row so the lift reads like a card */
-.table tbody tr.media-row td:first-child{
-  border-top-left-radius:12px;
-  border-bottom-left-radius:12px;
+/* Round the row so the lift reads like a card */
+.table tbody tr.media-row td:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
 }
-.table tbody tr.media-row td:last-child{
-  border-top-right-radius:12px;
-  border-bottom-right-radius:12px;
+.table tbody tr.media-row td:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
-/* base cell surface (we tint on hover/focus) */
-.table tbody tr.media-row td{background-color:transparent}
+/* Resting state */
+.table tbody tr.media-row td { background-color: transparent; }
 
-/* row hover tokens (light/dark) */
-:root{
+/* Hover/Focus state */
+:root {
   --row-hover-bg: rgba(0,0,0,.03);
   --row-shadow: 0 8px 24px rgba(0,0,0,.10);
 }
-html[data-theme="dark"]{
+html[data-theme="dark"] {
   --row-hover-bg: rgba(255,255,255,.05);
   --row-shadow: 0 10px 28px rgba(0,0,0,.35);
 }
 
-/* animate + highlight */
 .table tbody tr.media-row:hover,
-.table tbody tr.media-row:focus-visible{transform: scale(1.01)}
+.table tbody tr.media-row:focus-visible { transform: scale(1.01); }
+
 .table tbody tr.media-row:hover td,
-.table tbody tr.media-row:focus-visible td{
+.table tbody tr.media-row:focus-visible td {
   background-color: var(--row-hover-bg);
   box-shadow: var(--row-shadow);
 }
 
-/* keyboard focus ring */
-.table tbody tr.media-row:focus-visible{
-  outline:2px solid var(--accent-600);
-  outline-offset:2px;
+/* Keep focus clear for keyboard users */
+.table tbody tr.media-row:focus-visible {
+  outline: 2px solid var(--accent-600);
+  outline-offset: 2px;
 }
 
-/* title should look like normal text (not a link color) */
-.table tbody tr.media-row .title{
-  color:var(--text);
-  text-decoration:none;
+.table tbody tr.media-row .title {
+  color: var(--text);
+  text-decoration: none;
 }
 
-/* small press feedback */
-.table tbody tr.media-row:active{transform: scale(.998)}
+.table tbody tr.media-row:active { transform: scale(0.998); }
 
-/* avoid horizontal scrollbar flicker on hover lift */
-@media (min-width: 992px){
-  .table-responsive{overflow-x:hidden}
-  @supports (overflow: clip){ .table-responsive{overflow-x:clip} }
+/* Prevent horizontal scrollbar on wide screens during scale */
+@media (min-width: 992px) {
+  .table-responsive { overflow-x: hidden; }
+  @supports (overflow: clip) {
+    .table-responsive { overflow-x: clip; }
+  }
 }
 
-/* ---------- Tag pills (used in table + filters) ---------- */
-.pill{
-  display:inline-flex;align-items:center;gap:.35rem;
-  padding:.25rem .6rem;
-  border:1px solid var(--pill-border);
-  background:var(--pill-bg);color:var(--text);
-  border-radius:999px;text-decoration:none;
-  font-size:.92rem;line-height:1.1;
-}
-.pill:hover{border-color:var(--accent);color:var(--accent-600)}
-.pill.active{
-  background:var(--pill-active-bg);
-  border-color:var(--pill-active-bg);
-  color:var(--pill-active-text);
-}
-.pill.disabled{pointer-events:none;opacity:.55}
-.tag-pill{white-space:nowrap}
+/* =========================================================
+   Pills (shared base) + Tag pills
+   ========================================================= */
 
-/* ---------- File input button polish ---------- */
-input[type="file"].form-control::file-selector-button{
-  color:var(--text);
-  background:var(--surface-3);
-  border:1px solid var(--border);
-  margin-right:.75rem;border-radius:.5rem;
-  padding:.35rem .75rem;
-}
-input[type="file"].form-control::file-selector-button:hover{
-  background:var(--surface-3);
-  filter:brightness(.97);
+/* Base pill – uses theme variables from app.css */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .25rem .6rem;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--text);
+  border-radius: 999px;
+  text-decoration: none;
+  line-height: 1.1;
+  font-size: .92rem;
+  white-space: nowrap;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease, transform .08s ease;
 }
 
-.tag-list{display:flex;flex-wrap:wrap;gap:.4rem}
-.tag-list .tag-more{cursor:pointer;border-style:dashed;opacity:.9}
-.tag-list .tag-more:hover{opacity:1}
+.pill:hover {
+  border-color: var(--accent);
+  color: var(--accent-600);
+}
 
-/* Optional: ensure the small helper text keeps theme color */
-.form-text{color:var(--muted)}
+.pill:active { transform: translateY(1px); }
+
+.pill.active {
+  background: var(--pill-active-bg);
+  border-color: var(--pill-active-bg);
+  color: var(--pill-active-text);
+}
+
+/* Tag pill specifics */
+.tag-pill { white-space: nowrap; }
+
+.pill.disabled {
+  pointer-events: none;
+  opacity: .55;
+}
+
+.pill .count {
+  opacity: .75;
+  margin-left: .35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* “See all” control styled as a subtle pill */
+.pill.see-all {
+  border-style: dashed;
+  color: var(--muted);
+}
+.pill.see-all:hover {
+  color: var(--accent-600);
+  border-color: var(--accent);
+}
+
+/* Tag list container (just helpers; layout is in HTML via flex utilities) */
+.tags-flow { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+/* Optional: tighten cell spacing on small screens so pills wrap nicely */
+@media (max-width: 576px) {
+  .table td { padding-top: .5rem; padding-bottom: .5rem; }
+}

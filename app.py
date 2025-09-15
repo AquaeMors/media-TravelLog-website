@@ -12,6 +12,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from PIL import Image, ImageOps  # thumbnails
+from collections import Counter
+from sqlalchemy import or_
 
 # ---------------- App & Config ----------------
 app = Flask(__name__)
@@ -402,6 +404,22 @@ def hydrate_comment_reactions(comments, user_id, kind: str):
         c.likes, c.dislikes = counts.get(c.id, (0, 0))
         c.user_reaction = mine.get(c.id)
 
+def collect_tag_counts(query):
+    """
+    Given a SQLAlchemy query of Item rows, return a dict {tag: count}
+    Tags are read from the comma-separated Item.tags field.
+    """
+    counts = Counter()
+    for it in query:
+        if not it.tags:
+            continue
+        for raw in it.tags.split(','):
+            t = (raw or '').strip().lower()
+            if t:
+                counts[t] += 1
+    # return in alpha order (you can sort by count desc in the view if you prefer)
+    return dict(sorted(counts.items()))
+
 def save_item_cover(file_storage, item_id) -> tuple[str, str] | tuple[None, None]:
     """Save original cover + a jpeg thumb, return (rel_original, rel_thumb) or (None,None)."""
     if not file_storage or not file_storage.filename:
@@ -588,6 +606,38 @@ def admin_user_request_approve(req_id):
     db.session.commit()
     flash(f"Approved and created user '{rr.username}'.", "success")
     return redirect(url_for("admin_user_requests"))
+
+@app.get("/tracker/tags")
+@login_required
+def tracker_tags():
+    media_type = (request.args.get("type") or "").strip().lower()
+    q = (request.args.get("q") or "").strip()
+
+    qry = Item.query
+    if media_type in MEDIA_TYPES:
+        qry = qry.filter(Item.media_type == media_type)
+
+    if q:
+        like = f"%{q}%"
+        qry = qry.filter(or_(Item.title.ilike(like),
+                             Item.tags.ilike(like),
+                             Item.notes.ilike(like)))
+
+    items = qry.all()
+
+    type_counts = {t: Item.query.filter(Item.media_type == t).count() for t in MEDIA_TYPES}
+
+    tag_counts = collect_tag_counts(items)
+
+    return render_template(
+        "tracker_tags.html",
+        MEDIA_TYPES=MEDIA_TYPES,
+        type_filter=(media_type if media_type in MEDIA_TYPES else 'book'),
+        type_counts=type_counts,
+        q=q,
+        tag_counts=tag_counts
+    )
+
 
 @app.post("/admin/requests/<int:req_id>/deny")
 @login_required

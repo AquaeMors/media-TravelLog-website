@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Tags — Media Tracker{% endblock %}
+{% block head %}
+<link href="{{ url_for('static', filename='css/tracker.css') }}" rel="stylesheet">
+<style>
+  /* small, focused styling for the tag hub */
+  .tag-cloud { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .tag-cloud .pill { align-items:center; }
+  .tag-cloud .count {
+    font-variant-numeric: tabular-nums;
+    opacity:.75;
+    margin-left:.4rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <h1 class="h4 mb-1">Tags — <span class="text-capitalize">{{ type_filter }}</span></h1>
+      <a href="{{ url_for('tracker') }}?type={{ type_filter }}" class="small link-primary">Back to list</a>
+    </div>
+  </div>
+
+  <!-- Media type pills so you can jump between types -->
+  {% set ICONS = {'book':'book','movie':'film','show':'tv','anime':'collection-play','manga':'journals','manhwa':'journals','game':'controller','other':'list'} %}
+  <nav class="type-pills mb-3">
+    {% for t in MEDIA_TYPES %}
+      <a class="pill{% if t==type_filter %} active{% endif %}"
+         href="{{ url_for('tracker_tags') }}?type={{ t }}{% if q %}&q={{ q|urlencode }}{% endif %}">
+        <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
+        <span class="text-capitalize">{{ t }}</span>
+        <span class="count ms-1">{{ type_counts.get(t,0) }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <!-- Optional quick search (same query param as tracker list) -->
+  <form class="row gy-2 gx-2 align-items-center mb-3" method="get">
+    <input type="hidden" name="type" value="{{ type_filter }}">
+    <div class="col-auto">
+      <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
+             placeholder="Search title/tags/notes">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-primary btn-sm">Filter</button>
+    </div>
+  </form>
+
+  {% if tag_counts %}
+    <div class="card card-rounded">
+      <div class="card-body">
+        <div class="tag-cloud">
+          {% for tag, count in tag_counts.items() %}
+            <a class="pill tag-pill"
+               href="{{ url_for('tracker') }}?type={{ type_filter }}&tag={{ tag|urlencode }}">
+              {{ tag }}
+              <span class="count">{{ count }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="text-muted">No tags yet for this type.</div>
+  {% endif %}
+</div>
+{% endblock %}
