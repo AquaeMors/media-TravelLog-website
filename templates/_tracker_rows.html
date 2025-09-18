@@ -11,23 +11,26 @@
     <td>{{ r.chapter_total if r.chapter_total is not none else '—' }}</td>
     {% elif type_filter in ['show','anime'] %}
     <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
-    {% else %}
-    <td>—</td>
     {% endif %}
 
     <td>
       {% if r.tags %}
-      <div class="d-flex flex-wrap gap-1">
+      <div class="tag-list d-flex flex-wrap gap-1">
         {% for tg in r.tags.split(',') %}
         {% set t = tg.strip() %}
         {% if t %}
         {% set t_l = t|lower %}
-        <a class="pill tag-pill js-add-tag" href="#" data-tag="{{ t_l }}" title="Filter by {{ t }}">
-          {{ t }}
+        <a class="pill tag-pill js-add-tag" href="#" data-row-ignore data-tag="{{ t_l }}" title="Filter by {{ t }}">
+          <span class="label">{{ t }}</span>
         </a>
         {% endif %}
         {% endfor %}
+        <button type="button" class="pill tag-more d-none" data-role="more" data-row-ignore>
+          See all
+        </button>
       </div>
+      {% else %}
+      —
       {% endif %}
     </td>
 
@@ -38,8 +41,10 @@
   </tr>
   {% endfor %}
   {% else %}
+  {% set extra_col = 1 if type_filter in ['book','manga','manhwa','show','anime'] else 0 %}
+  {% set cols = 3 + extra_col %}
   <tr>
-    <td colspan="7" class="text-muted">No {{ type_filter }} yet.</td>
+    <td colspan="{{ cols }}" class="text-muted">No {{ type_filter }} yet.</td>
   </tr>
   {% endif %}
 </tbody>

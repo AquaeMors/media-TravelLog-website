@@ -290,3 +290,11 @@ html[data-theme="dark"] {
   border-color: var(--pill-active-bg);
   color: var(--pill-active-text);
 }
+
+/* Ensure tag text shows inside table rows (override any compact pill rules) */
+.table td .tag-pill { 
+  font-size: .875rem !important;
+  line-height: 1.2;
+  color: var(--bs-body-color) !important;
+}
+.table td .tag-pill .label { display: inline; }
