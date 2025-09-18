@@ -263,11 +263,14 @@ with app.app_context():
     db.session.commit()
 
 # ---------------- Template helpers ----------------
+import os
+from flask import send_from_directory
 @app.get("/favicon.ico")
 def favicon_root():
     return send_from_directory(
-        os.path.join(app.root_path, "static", "icons"), "favicon.ico",
-        cache_timeout=60*60*24*30
+        os.path.join(app.static_folder, "icons"),
+        "favicon.ico",
+        max_age=31536000  # replaces cache_timeout
     )
 
 @app.context_processor
