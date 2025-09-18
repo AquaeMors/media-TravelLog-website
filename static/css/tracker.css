@@ -238,3 +238,55 @@ html[data-theme="dark"] {
 @media (max-width: 576px) {
   .table td { padding-top: .5rem; padding-bottom: .5rem; }
 }
+
+/* -------- Meta buttons (All types / Tags) -------- */
+.meta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  margin-top: .25rem;
+}
+
+.meta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: var(--shadow);
+  transition: border-color .15s ease, background-color .15s ease, transform .06s ease;
+}
+
+.meta-btn .bi {
+  font-size: 1rem;
+  opacity: .9;
+}
+
+.meta-btn:hover {
+  background: var(--accent-100);
+  border-color: var(--accent-600);
+  color: var(--accent-600);
+}
+
+.meta-btn:active {
+  transform: translateY(1px);
+}
+
+.meta-btn:focus-visible {
+  outline: 2px solid var(--accent-600);
+  outline-offset: 2px;
+}
+
+/* Optional: an "active" look if you ever want to mark the current one */
+.meta-btn.active {
+  background: var(--pill-active-bg);
+  border-color: var(--pill-active-bg);
+  color: var(--pill-active-text);
+}

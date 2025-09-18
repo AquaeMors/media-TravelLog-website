@@ -1,0 +1,45 @@
+<tbody id="rows-tbody">
+  {% if rows %}
+  {% for r in rows %}
+  <tr class="media-row" role="button" tabindex="0" aria-label="Open {{ r.title }} details"
+    data-row-modal="#item{{ r.id }}">
+    <td class="fw-semibold">
+      <span class="title">{{ r.title }}</span>
+    </td>
+
+    {% if type_filter in ['book','manga','manhwa'] %}
+    <td>{{ r.chapter_total if r.chapter_total is not none else '—' }}</td>
+    {% elif type_filter in ['show','anime'] %}
+    <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
+    {% else %}
+    <td>—</td>
+    {% endif %}
+
+    <td>
+      {% if r.tags %}
+      <div class="d-flex flex-wrap gap-1">
+        {% for tg in r.tags.split(',') %}
+        {% set t = tg.strip() %}
+        {% if t %}
+        {% set t_l = t|lower %}
+        <a class="pill tag-pill js-add-tag" href="#" data-tag="{{ t_l }}" title="Filter by {{ t }}">
+          {{ t }}
+        </a>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </td>
+
+    <td class="text-end text-nowrap">
+      <button class="btn btn-sm btn-outline-secondary" data-row-ignore data-bs-toggle="modal"
+        data-bs-target="#itemEdit{{ r.id }}">Edit</button>
+    </td>
+  </tr>
+  {% endfor %}
+  {% else %}
+  <tr>
+    <td colspan="7" class="text-muted">No {{ type_filter }} yet.</td>
+  </tr>
+  {% endif %}
+</tbody>

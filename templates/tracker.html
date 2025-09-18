@@ -13,8 +13,8 @@
   </div>
 
   {% set ICONS = {
-  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
-  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+    'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+    'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
   } %}
 
   <div class="row g-3">
@@ -36,65 +36,66 @@
   </div>
 
   {% else %}
-  <div>
-    <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
-    <div class="small d-flex align-items-center gap-3">
-      <a href="{{ url_for('tracker') }}" class="link-primary">All types</a>
-      <a href="{{ url_for('tracker_tags', type=type_filter) }}" class="link-primary">Tags</a>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <h1 class="h4 mb-1">Media Tracker — <span class="text-capitalize">{{ type_filter }}</span></h1>
+
+      <div class="meta-actions">
+        <a class="meta-btn" href="{{ url_for('tracker') }}">
+          <i class="bi bi-grid-3x3-gap"></i>
+          <span>All types</span>
+        </a>
+        <a class="meta-btn" href="{{ url_for('tracker_tags') }}?type={{ type_filter }}">
+          <i class="bi bi-tags"></i>
+          <span>Tags</span>
+        </a>
+      </div>
     </div>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">New Item</button>
   </div>
 
-  <!-- Media type pills -->
+  {# Media type pills #}
   {% set ICONS = {
-  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
-  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+    'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+    'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
   } %}
   <nav class="type-pills mb-3">
     {% for t in MEDIA_TYPES %}
-    <a class="pill{% if t==type_filter %} active{% endif %}"
-      href="/tracker?type={{ t }}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}">
-      <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
-      <span class="text-capitalize">{{ t }}</span>
-    </a>
+      <a class="pill{% if t==type_filter %} active{% endif %}"
+         href="/tracker?type={{ t }}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}">
+        <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
+        <span class="text-capitalize">{{ t }}</span>
+      </a>
     {% endfor %}
   </nav>
 
-
-  <!-- Filters (q only) -->
-  <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-3" method="get">
+  {# Filters (q only) — keep as a real <form> for progressive enhancement #}
+  <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-2" method="get">
     <input type="hidden" name="type" value="{{ type_filter }}">
+    {# include current tags so a manual submit preserves them #}
     {% for tt in tags %}
-    <input type="hidden" name="tag" value="{{ tt }}">
+      <input type="hidden" name="tag" value="{{ tt }}">
     {% endfor %}
-    <input type="hidden" name="tag" value="{{ tag|default('', true) }}">
     <div class="col-auto">
       <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
-        placeholder="Search title/tags/notes">
+             placeholder="Search title/tags/notes">
     </div>
     <div class="col-auto">
       <button class="btn btn-outline-primary btn-sm">Filter</button>
     </div>
-    {% if tags %}
-    <div class="col-12 d-flex flex-wrap gap-2 mt-1">
-      {% for tt in tags %}
-      <a class="pill active"
-        href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for t2 in tags if t2!=tt %}&tag={{ t2|urlencode }}{% endfor %}">
-        {{ tt }} <i class="bi bi-x-lg ms-1"></i>
-      </a>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- (optional) show active tag chip with “clear” -->
-    {% if tag %}
-    <div class="col-auto">
-      <a class="pill active" href="{{ url_for('tracker') }}?type={{ type_filter }}&q={{ q|urlencode }}">
-        {{ tag }} <i class="bi bi-x-lg ms-1"></i>
-      </a>
-    </div>
-    {% endif %}
   </form>
 
+  {# Active tag chips: JS will manage these dynamically.
+     We also server-render the current chips for no-JS fallback. #}
+  <div id="activeTags" class="d-flex flex-wrap gap-2 mb-3">
+    {% for tt in tags %}
+      <a class="pill active" data-remove-tag="{{ tt }}"
+         href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for t2 in tags if t2!=tt %}&tag={{ t2|urlencode }}{% endfor %}">
+        {{ tt }} <i class="bi bi-x-lg ms-1"></i>
+      </a>
+    {% endfor %}
+  </div>
 
   <div class="table-responsive">
     <table class="table table-hover align-middle">
@@ -102,69 +103,17 @@
         <tr>
           <th>Title</th>
           {% if type_filter in ['book','manga','manhwa'] %}
-          <th>Chapters</th>
+            <th>Chapters</th>
           {% elif type_filter in ['show','anime'] %}
-          <th>Seasons</th>
+            <th>Seasons</th>
           {% endif %}
           <th>Tags</th>
           <th style="width:1%;">Actions</th>
         </tr>
       </thead>
 
-      <tbody>
-        {% if rows %}
-        {% for r in rows %}
-        <tr class="media-row" role="button" tabindex="0" aria-label="Open {{ r.title }} details" data-bs-toggle="modal"
-          data-bs-target="#item{{ r.id }}">
-          <td class="fw-semibold">
-            <span class="title">{{ r.title }}</span>
-          </td>
-
-          {% if type_filter in ['book','manga','manhwa'] %}
-          <td>{{ r.chapter_total if r.chapter_total is not none else '—' }}</td>
-          {% elif type_filter in ['show','anime'] %}
-          <td>{{ r.seasons if r.seasons is not none else '—' }}</td>
-          {% endif %}
-
-          <td>
-            {% if r.tags %}
-            <div class="tag-list d-flex flex-wrap gap-1" data-max-xs="3">
-              {% for tg in r.tags.split(',') %}
-              {% set t = tg.strip() %}
-              {% if t %}
-              {% set t_l = t|lower %}
-              {% if t_l in tags %}
-              <span class="pill tag-pill disabled" aria-disabled="true" data-row-ignore>{{ t }}</span>
-              {% else %}
-              <a class="pill tag-pill" data-row-ignore
-                href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}&tag={{ t_l|urlencode }}">
-                {{ t }}
-              </a>
-              {% endif %}
-              {% endif %}
-              {% endfor %}
-              <button type="button" class="pill tag-more d-none" data-role="more" data-row-ignore>See all</button>
-            </div>
-            {% endif %}
-          </td>
-
-
-
-
-
-          <td class="text-end text-nowrap">
-            <button class="btn btn-sm btn-outline-secondary" data-row-ignore data-bs-toggle="modal"
-              data-bs-target="#itemEdit{{ r.id }}">
-              Edit
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="7" class="text-muted">No {{ type_filter }} yet.</td>
-        </tr>
-        {% endif %}
+      <tbody id="tracker-tbody">
+        {% include '_tracker_rows.html' %}
       </tbody>
 
     </table>
@@ -191,7 +140,7 @@
                 <label class="form-label">Type</label>
                 <select id="add-media-type" name="media_type" class="form-select" data-faux-select>
                   {% for t in MEDIA_TYPES %}
-                  <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
+                    <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -287,66 +236,67 @@
                   {% if r.cover_thumb_path %}
                   <div class="text-center mb-3">
                     <img src="/u/{{ r.cover_thumb_path }}" alt="Cover" class="img-fluid rounded"
-                      style="max-height: 260px;">
+                         style="max-height: 260px;">
                   </div>
                   {% endif %}
                   <h6 class="text-muted">Details</h6>
                   <dl class="row mb-0">
                     {% if r.chapter_total is not none and r.media_type in ['book','manga','manhwa'] %}
-                    <dt class="col-5">Chapters</dt>
-                    <dd class="col-7">{{ r.chapter_total }}</dd>
+                      <dt class="col-5">Chapters</dt>
+                      <dd class="col-7">{{ r.chapter_total }}</dd>
                     {% endif %}
 
                     {% if r.seasons is not none and r.media_type in ['show','anime'] %}
-                    <dt class="col-5">Seasons</dt>
-                    <dd class="col-7">{{ r.seasons }}</dd>
+                      <dt class="col-5">Seasons</dt>
+                      <dd class="col-7">{{ r.seasons }}</dd>
                     {% endif %}
 
                     {% if r.release_status %}
-                    <dt class="col-5">Release</dt>
-                    <dd class="col-7">{{ r.release_status }}</dd>
+                      <dt class="col-5">Release</dt>
+                      <dd class="col-7">{{ r.release_status }}</dd>
                     {% endif %}
 
                     {% if r.year %}
-                    <dt class="col-5">Year</dt>
-                    <dd class="col-7">{{ r.year }}</dd>
+                      <dt class="col-5">Year</dt>
+                      <dd class="col-7">{{ r.year }}</dd>
                     {% endif %}
 
                     {% if r.runtime_mins %}
-                    <dt class="col-5">Runtime</dt>
-                    <dd class="col-7">{{ r.runtime_mins }} min</dd>
+                      <dt class="col-5">Runtime</dt>
+                      <dd class="col-7">{{ r.runtime_mins }} min</dd>
                     {% endif %}
 
                     {% if r.platforms %}
-                    <dt class="col-5">Platforms</dt>
-                    <dd class="col-7">{{ r.platforms }}</dd>
+                      <dt class="col-5">Platforms</dt>
+                      <dd class="col-7">{{ r.platforms }}</dd>
                     {% endif %}
 
                     <dt class="col-5">Tags</dt>
                     <dd class="col-7">
                       {% if r.tags %}
-                      <div class="d-flex flex-wrap gap-1">
-                        {% for tg in r.tags.split(',') %}
-                        {% set t = tg.strip() %}
-                        {% if t %}
-                        <a class="pill tag-pill"
-                          href="{{ url_for('tracker') }}?type={{ r.media_type }}&tag={{ t|lower|urlencode }}">
-                          {{ t }}
-                        </a>
-                        {% endif %}
-                        {% endfor %}
-                      </div>
+                        <div class="d-flex flex-wrap gap-1">
+                          {% for tg in r.tags.split(',') %}
+                            {% set t = tg.strip() %}
+                            {% if t %}
+                              <a class="pill tag-pill"
+                                 data-add-tag="{{ t|lower }}"
+                                 href="{{ url_for('tracker') }}?type={{ r.media_type }}&tag={{ t|lower|urlencode }}">
+                                {{ t }}
+                              </a>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
                       {% else %}
-                      —
+                        —
                       {% endif %}
                     </dd>
-
                   </dl>
+
                   {% if r.notes %}
-                  <hr>
-                  <div><strong>Notes</strong>
-                    <div class="mt-1">{{ r.notes }}</div>
-                  </div>
+                    <hr>
+                    <div><strong>Notes</strong>
+                      <div class="mt-1">{{ r.notes }}</div>
+                    </div>
                   {% endif %}
                 </div>
               </div>
@@ -362,18 +312,14 @@
                 <div class="card-body comments-panel">
                   <div class="comments-ui sticky-top bg-white pb-2" style="top: -0.5rem;">
                     <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment" data-keep-modal>
-                      <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username
-                          }}</strong></label>
+                      <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username }}</strong></label>
                       <textarea class="form-control" name="body" rows="3" maxlength="2000"
-                        placeholder="Share a thought…" required></textarea>
+                                placeholder="Share a thought…" required></textarea>
                       <div class="d-flex justify-content-between align-items-center mt-2">
                         <div class="comments-toolbar">
-                          <button type="button" class="btn-tool" title="Bold" disabled><i
-                              class="bi bi-type-bold"></i></button>
-                          <button type="button" class="btn-tool" title="Italic" disabled><i
-                              class="bi bi-type-italic"></i></button>
-                          <button type="button" class="btn-tool" title="Link" disabled><i
-                              class="bi bi-link-45deg"></i></button>
+                          <button type="button" class="btn-tool" title="Bold" disabled><i class="bi bi-type-bold"></i></button>
+                          <button type="button" class="btn-tool" title="Italic" disabled><i class="bi bi-type-italic"></i></button>
+                          <button type="button" class="btn-tool" title="Link" disabled><i class="bi bi-link-45deg"></i></button>
                         </div>
                         <button class="btn btn-sm btn-primary">Comment</button>
                       </div>
@@ -382,44 +328,45 @@
 
                   <div class="comments-scroll" data-initial="2">
                     {% if r.comments %}
-                    {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
-                    <article class="comment-card">
-                      <div class="d-flex justify-content-between">
-                        <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
-                        {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
-                        <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal
-                          data-confirm="Delete this comment?">
-                          <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
-                        </form>
-                        {% endif %}
-                      </div>
+                      {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
+                        <article class="comment-card">
+                          <div class="d-flex justify-content-between">
+                            <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
+                            {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
+                              <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal
+                                    data-confirm="Delete this comment?">
+                                <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
+                              </form>
+                            {% endif %}
+                          </div>
 
-                      <div class="comment-body mt-2">{{ c.body }}</div>
+                          <div class="comment-body mt-2">{{ c.body }}</div>
 
-                      <div class="comment-footer">
-                        <div class="d-flex gap-2">
-                          <button type="button" class="btn btn-react {{ 'has-count' if c.likes>0 }}" data-react="like"
-                            data-kind="item" data-comment-id="{{ c.id }}"
-                            aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
-                            <i class="bi bi-arrow-up"></i>
-                            <span class="count">{{ c.likes }}</span>
-                          </button>
-                          <button type="button" class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
-                            data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
-                            aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
-                            <i class="bi bi-arrow-down"></i>
-                            <span class="count">{{ c.dislikes }}</span>
-                          </button>
-                        </div>
-                        <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">{{
-                          c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                      </div>
-                    </article>
-                    {% endfor %}
+                          <div class="comment-footer">
+                            <div class="d-flex gap-2">
+                              <button type="button" class="btn btn-react {{ 'has-count' if c.likes>0 }}"
+                                      data-react="like" data-kind="item" data-comment-id="{{ c.id }}"
+                                      aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
+                                <i class="bi bi-arrow-up"></i>
+                                <span class="count">{{ c.likes }}</span>
+                              </button>
+                              <button type="button" class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
+                                      data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
+                                      aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
+                                <i class="bi bi-arrow-down"></i>
+                                <span class="count">{{ c.dislikes }}</span>
+                              </button>
+                            </div>
+                            <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">
+                              {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                          </div>
+                        </article>
+                      {% endfor %}
 
-                    <button type="button" class="btn btn-load-more w-100 mt-3" data-step="5">Load more</button>
+                      <button type="button" class="btn btn-load-more w-100 mt-3" data-step="5">Load more</button>
                     {% else %}
-                    <div class="text-muted">No comments yet.</div>
+                      <div class="text-muted">No comments yet.</div>
                     {% endif %}
                   </div><!-- /.comments-scroll -->
                 </div><!-- /.card-body -->
@@ -456,7 +403,7 @@
                 <label class="form-label">Type</label>
                 <select name="media_type" class="form-select js-type" data-faux-select>
                   {% for t in MEDIA_TYPES %}
-                  <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
+                    <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -471,26 +418,26 @@
               <div class="col-md-4" data-field="chapters">
                 <label class="form-label">Total chapters</label>
                 <input type="number" min="0" name="chapter_total" class="form-control"
-                  value="{{ r.chapter_total if r.chapter_total is not none }}">
+                       value="{{ r.chapter_total if r.chapter_total is not none }}">
               </div>
 
               <!-- Seasons -->
               <div class="col-md-4 d-none" data-field="seasons">
                 <label class="form-label">Seasons</label>
                 <input type="number" min="0" name="seasons" class="form-control"
-                  value="{{ r.seasons if r.seasons is not none }}">
+                       value="{{ r.seasons if r.seasons is not none }}">
               </div>
 
               <!-- Movie specifics -->
               <div class="col-md-4 d-none" data-field="year">
                 <label class="form-label">Year</label>
                 <input type="number" min="1800" max="2100" name="year" class="form-control"
-                  value="{{ r.year if r.year is not none }}">
+                       value="{{ r.year if r.year is not none }}">
               </div>
               <div class="col-md-4 d-none" data-field="runtime">
                 <label class="form-label">Runtime (mins)</label>
                 <input type="number" min="0" name="runtime_mins" class="form-control"
-                  value="{{ r.runtime_mins if r.runtime_mins is not none }}">
+                       value="{{ r.runtime_mins if r.runtime_mins is not none }}">
               </div>
 
               <!-- Game specifics -->

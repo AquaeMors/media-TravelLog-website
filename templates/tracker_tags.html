@@ -26,7 +26,14 @@
           — All types
         {% endif %}
       </h1>
-      <a href="{{ url_for('tracker', type=type_filter or None) }}" class="small link-primary">Back to list</a>
+
+      <!-- Styled like the "All types" / "Tags" meta buttons -->
+      <div class="meta-actions mt-1">
+        <a class="meta-btn" href="{{ url_for('tracker', type=type_filter or None) }}">
+          <i class="bi bi-arrow-left-circle"></i>
+          <span>Back to list</span>
+        </a>
+      </div>
     </div>
   </div>
 

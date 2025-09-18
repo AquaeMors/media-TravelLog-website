@@ -701,6 +701,45 @@ def serve_upload(subpath):
     resp.headers["Cache-Control"] = "public, max-age=2592000, immutable"
     return resp
 
+# --- Dynamic rows fragment for AJAX (no full reload) ---
+@app.route("/tracker/rows")
+@login_required
+def tracker_rows():
+    # inputs
+    type_filter = (request.args.get("type") or "book").lower()
+    q = (request.args.get("q") or "").strip()
+    tags = [t.strip().lower() for t in request.args.getlist("tag") if t.strip()]
+
+    # build the query exactly like /tracker
+    query = Item.query.filter(Item.media_type == type_filter)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                Item.title.ilike(like),
+                Item.tags.ilike(like),
+                Item.notes.ilike(like),
+            )
+        )
+    for t in tags:
+        query = query.filter(Item.tags.ilike(f"%{t}%"))
+
+    rows = query.order_by(Item.title.asc()).all()
+
+    # keep comment reaction counts in sync (same as /tracker)
+    uid = session.get("user_id")
+    for r in rows:
+        hydrate_comment_reactions(r.comments, uid, "item")
+
+    # return just the tbody fragment
+    return render_template(
+        "_tracker_rows.html",
+        rows=rows,
+        type_filter=type_filter,
+        tags=tags,
+        q=q,
+    )
+
 # ----- Tracker (menu-first + create/list + comments) -----
 @app.route("/tracker", methods=["GET", "POST"])
 @login_required
