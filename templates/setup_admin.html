@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Initial Setup — Create Admin{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h4 mb-2">Initial Setup</h1>
+  <p class="text-muted mb-4">No admin exists yet. Create one below.</p>
+
+  <div class="row g-4">
+    <!-- Promote existing user -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Promote an existing user</h5>
+          <form method="post" action="{{ url_for('setup_admin') }}">
+            <input type="hidden" name="mode" value="promote">
+            <div class="mb-3">
+              <label class="form-label">Select user</label>
+              <select class="form-select" name="username" required>
+                {% for u in users %}
+                  <option value="{{ u.username }}" {% if u.username == 'tiny' %}selected{% endif %}>
+                    {{ u.username }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Choose an existing account to grant admin access.</div>
+            </div>
+            <button class="btn btn-primary">Promote to Admin</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create new admin -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Create a new admin</h5>
+          <form method="post" action="{{ url_for('setup_admin') }}">
+            <input type="hidden" name="mode" value="create">
+            <div class="mb-3">
+              <label class="form-label">Username</label>
+              <input name="new_username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input type="password" name="new_password" class="form-control" required>
+            </div>
+            <button class="btn btn-success">Create Admin</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="small text-muted mt-4">
+    This page is only available until the first admin is created. Afterwards it returns 404.
+  </p>
+</div>
+{% endblock %}

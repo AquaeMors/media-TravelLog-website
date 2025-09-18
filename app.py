@@ -78,6 +78,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     can_travel_edit = db.Column(db.Boolean, nullable=False, default=False)
     can_approve_users = db.Column(db.Boolean, nullable=False, default=False)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
 
 class HomeCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -188,6 +189,9 @@ with app.app_context():
         db.session.execute(text("ALTER TABLE user ADD COLUMN can_travel_edit INTEGER NOT NULL DEFAULT 0"))
     if "can_approve_users" not in cols_user:
         db.session.execute(text("ALTER TABLE user ADD COLUMN can_approve_users INTEGER NOT NULL DEFAULT 0"))
+    if "is_admin" not in cols_user:
+        db.session.execute(text("ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"))
+        db.session.commit()
 
     # trip table
     cols_trip = [r[1] for r in db.session.execute(text("PRAGMA table_info(trip)")).fetchall()]
@@ -253,6 +257,8 @@ with app.app_context():
                 "Track books, manga/manhwa, movies, shows, and more.", "/tracker", 20)
     ensure_card("fitness", "Fitness",
                 "Section for keeping track of and looking at trends for personal fitness", "/fitness", 30)
+    ensure_card("wedding", "Wedding",
+            "Admin-only planning & tools.", "/wedding", 40)
     
     db.session.commit()
 
@@ -300,6 +306,16 @@ def travel_edit_required(fn):
         uid = session.get("user_id")
         user = User.query.get(uid) if uid else None
         if not user or not user.can_travel_edit:
+            abort(403)
+        return fn(*args, **kwargs)
+    return wrapper
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        uid = session.get("user_id")
+        user = User.query.get(uid) if uid else None
+        if not user or not user.is_admin:
             abort(403)
         return fn(*args, **kwargs)
     return wrapper
@@ -464,8 +480,13 @@ def home():
 
 @app.post("/home/card/<int:card_id>/update")
 @login_required
-@approve_users_required
 def home_card_update(card_id):
+    # auth: admin OR approver
+    uid = session.get("user_id")
+    me = User.query.get(uid) if uid else None
+    if not me or not (me.is_admin or me.can_approve_users):
+        abort(403)
+
     card = HomeCard.query.get_or_404(card_id)
     title = (request.form.get("title") or "").strip()
     description = (request.form.get("description") or "").strip()
@@ -566,6 +587,67 @@ def register():
         return redirect(url_for("login"))
     return render_template("register.html")
 
+# ----- Admin Creation - 404 once created -----
+
+from werkzeug.security import generate_password_hash
+
+def _any_admin_exists() -> bool:
+    return bool(User.query.filter_by(is_admin=True).first())
+
+@app.route("/setup", methods=["GET", "POST"])
+def setup_admin():
+    # Only usable if there is no admin yet
+    if _any_admin_exists():
+        # Hide this endpoint once an admin exists
+        abort(404)
+
+    if request.method == "POST":
+        mode = (request.form.get("mode") or "").strip()
+
+        if mode == "promote":
+            username = (request.form.get("username") or "").strip()
+            u = User.query.filter_by(username=username).first()
+            if not u:
+                flash("User not found.", "danger")
+                return redirect(url_for("setup_admin"))
+            u.is_admin = True
+            # (optional) grant your other perms so the admin sees all controls:
+            u.can_travel_edit = True
+            u.can_approve_users = True
+            db.session.commit()
+            flash(f"Promoted {u.username} to admin.", "success")
+            return redirect(url_for("login"))
+
+        elif mode == "create":
+            new_username = (request.form.get("new_username") or "").strip()
+            new_password = request.form.get("new_password") or ""
+            if not new_username or not new_password:
+                flash("Username and password are required.", "warning")
+                return redirect(url_for("setup_admin"))
+            if User.query.filter_by(username=new_username).first():
+                flash("That username already exists.", "warning")
+                return redirect(url_for("setup_admin"))
+
+            u = User(
+                username=new_username,
+                password_hash=generate_password_hash(new_password),
+                is_admin=True,
+                can_travel_edit=True,
+                can_approve_users=True,
+            )
+            db.session.add(u)
+            db.session.commit()
+            flash(f"Created admin user {u.username}.", "success")
+            return redirect(url_for("login"))
+
+        else:
+            flash("Invalid request.", "danger")
+            return redirect(url_for("setup_admin"))
+
+    # GET: render the setup page with current users to pick from
+    users = User.query.order_by(User.username.asc()).all()
+    return render_template("setup_admin.html", users=users)
+
 @app.get("/admin/requests")
 @login_required
 @approve_users_required
@@ -579,6 +661,26 @@ def admin_user_requests():
               .order_by(RegistrationRequest.decided_at.desc().nullslast())
               .limit(50).all())
     return render_template("admin_requests.html", pending=pending, recent=recent)
+
+@app.get("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    users = User.query.order_by(User.username.asc()).all()
+    return render_template("admin_users.html", users=users)
+
+@app.post("/admin/users/<int:user_id>/update")
+@login_required
+@admin_required
+def admin_users_update(user_id):
+    u = User.query.get_or_404(user_id)
+    # checkboxes are present → "on" when checked
+    u.is_admin = bool(request.form.get("is_admin"))
+    u.can_travel_edit = bool(request.form.get("can_travel_edit"))
+    u.can_approve_users = bool(request.form.get("can_approve_users"))
+    db.session.commit()
+    flash(f"Updated permissions for {u.username}.", "success")
+    return redirect(url_for("admin_users"))
 
 @app.post("/admin/requests/<int:req_id>/approve")
 @login_required
@@ -1199,6 +1301,12 @@ def api_comment_react(kind, comment_id):
 def handle_413(e):
     flash("That upload was too large. Try fewer/smaller photos or upload in batches.", "danger")
     return redirect(url_for("travel"))
+
+@app.get("/wedding")
+@login_required
+@admin_required
+def wedding():
+    return render_template("wedding.html")
 
 @app.get("/healthz")
 def healthz():

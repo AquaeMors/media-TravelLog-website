@@ -15,77 +15,88 @@
 <main class="container py-4">
   <div class="row g-4">
     {% for c in cards %}
-    <div class="col-12 col-sm-6 col-lg-4">
-      <!-- position-relative enables the stretched-link;
+      {# Hide the Wedding card from non-admins #}
+      {% set is_wedding = (c.key == 'wedding') %}
+      {% set hide_wedding = is_wedding and not (current_user and current_user.is_admin) %}
+      {% if not hide_wedding %}
+      <div class="col-12 col-sm-6 col-lg-4">
+        <!-- position-relative enables the stretched-link;
              overflow-hidden keeps image corners rounded -->
-      <div class="card card-rounded shadow-sm h-100 overflow-hidden position-relative">
-        {% if c.image_path %}
-        <img src="/u/{{ c.image_path }}" class="card-img-top home-card-img" alt="Cover for {{ c.title }}" loading="lazy"
-          decoding="async">
-        {% else %}
-        <div class="home-card-img placeholder d-flex align-items-center justify-content-center text-muted">
-          <i class="bi bi-image" aria-hidden="true"></i>
-        </div>
-        {% endif %}
+        <div class="card card-rounded shadow-sm h-100 overflow-hidden position-relative">
+          {% if c.image_path %}
+            <img src="/u/{{ c.image_path }}" class="card-img-top home-card-img"
+                 alt="Cover for {{ c.title }}" loading="lazy" decoding="async">
+          {% else %}
+            <div class="home-card-img placeholder d-flex align-items-center justify-content-center text-muted">
+              <i class="bi bi-image" aria-hidden="true"></i>
+            </div>
+          {% endif %}
 
-        <div class="card-body d-flex flex-column">
-          <h2 class="h5 mb-1">{{ c.title }}</h2>
-          <p class="text-muted small mb-3">{{ c.description or '' }}</p>
+          <div class="card-body d-flex flex-column">
+            <h2 class="h5 mb-1">
+              {{ c.title }}
+              {% if is_wedding %}
+                <span class="badge text-bg-warning align-middle ms-2">admin-only</span>
+              {% endif %}
+            </h2>
+            <p class="text-muted small mb-3">{{ c.description or '' }}</p>
 
-          <!-- Make the entire card clickable -->
-          <a href="{{ c.url }}" class="stretched-link" aria-label="Open {{ c.title }}"></a>
+            <!-- Make the entire card clickable -->
+            <a href="{{ c.url }}" class="stretched-link" aria-label="Open {{ c.title }}"></a>
 
-          <!-- Keep the Edit button above the stretched-link -->
-          <div class="mt-auto d-flex gap-2 position-relative z-1">
-            {% if current_user and current_user.can_approve_users %}
-            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editCard{{ c.id }}">
-              <i class="bi bi-pencil-square me-1"></i> Edit
-            </button>
-            {% endif %}
+            <!-- Keep the Edit button above the stretched-link -->
+            <div class="mt-auto d-flex gap-2 position-relative z-1">
+              {% if current_user and (current_user.is_admin or current_user.can_approve_users) %}
+                <button class="btn btn-outline-secondary"
+                        data-bs-toggle="modal" data-bs-target="#editCard{{ c.id }}">
+                  <i class="bi bi-pencil-square me-1"></i> Edit
+                </button>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    {% if current_user and current_user.can_approve_users %}
-    <!-- Edit Modal -->
-    <div class="modal fade" id="editCard{{ c.id }}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-md modal-dialog-centered">
-        <div class="modal-content">
-          <form method="post" action="/home/card/{{ c.id }}/update" enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title">Edit “{{ c.title }}”</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Title</label>
-                <input name="title" class="form-control" value="{{ c.title }}" required>
+      {% if current_user and (current_user.is_admin or current_user.can_approve_users) %}
+      <!-- Edit Modal -->
+      <div class="modal fade" id="editCard{{ c.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+          <div class="modal-content">
+            <form method="post" action="/home/card/{{ c.id }}/update" enctype="multipart/form-data">
+              <div class="modal-header">
+                <h5 class="modal-title">Edit “{{ c.title }}”</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-control" rows="3">{{ c.description or '' }}</textarea>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control" value="{{ c.title }}" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea name="description" class="form-control" rows="3">{{ c.description or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Card Image (optional)</label>
+                  <input type="file" class="form-control" name="image" accept="image/*">
+                  <div class="form-text">JPG/PNG/WebP/GIF. We’ll resize for speed.</div>
+                </div>
+                {% if c.image_path %}
+                  <div class="text-center">
+                    <img src="/u/{{ c.image_path }}" class="img-fluid rounded" alt="Current image">
+                  </div>
+                {% endif %}
               </div>
-              <div class="mb-3">
-                <label class="form-label">Card Image (optional)</label>
-                <input type="file" class="form-control" name="image" accept="image/*">
-                <div class="form-text">JPG/PNG/WebP/GIF. We’ll resize for speed.</div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary">Save changes</button>
               </div>
-              {% if c.image_path %}
-              <div class="text-center">
-                <img src="/u/{{ c.image_path }}" class="img-fluid rounded" alt="Current image">
-              </div>
-              {% endif %}
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary">Save changes</button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
-    {% endif %}
+      {% endif %}
+      {% endif %}
     {% endfor %}
   </div>
 </main>

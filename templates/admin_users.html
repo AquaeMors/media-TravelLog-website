@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Admin — Users & Permissions{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h4 mb-3">Users & Permissions</h1>
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th class="text-center">Admin</th>
+          <th class="text-center">Travel Edit</th>
+          <th class="text-center">Approve Users</th>
+          <th>Actions</th>
+          <th class="text-muted">Badges</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><code>{{ u.username }}</code></td>
+
+          {# Each checkbox targets the same row form via the "form" attribute #}
+          <td class="text-center">
+            <input class="form-check-input" type="checkbox" name="is_admin"
+                   form="f-{{ u.id }}" {% if u.is_admin %}checked{% endif %}>
+          </td>
+          <td class="text-center">
+            <input class="form-check-input" type="checkbox" name="can_travel_edit"
+                   form="f-{{ u.id }}" {% if u.can_travel_edit %}checked{% endif %}>
+          </td>
+          <td class="text-center">
+            <input class="form-check-input" type="checkbox" name="can_approve_users"
+                   form="f-{{ u.id }}" {% if u.can_approve_users %}checked{% endif %}>
+          </td>
+
+          <td>
+            <form id="f-{{ u.id }}" class="d-inline" method="post"
+                  action="{{ url_for('admin_users_update', user_id=u.id) }}">
+              <input type="hidden" name="csrf" value="">
+              <button class="btn btn-sm btn-primary">Save</button>
+            </form>
+          </td>
+
+          <td class="text-muted">
+            {% if u.is_admin %}<span class="badge text-bg-warning">admin</span>{% endif %}
+            {% if u.can_travel_edit %}<span class="badge text-bg-info">travel-edit</span>{% endif %}
+            {% if u.can_approve_users %}<span class="badge text-bg-success">approve-users</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-muted small">Tip: Admins can toggle their own flags here as well.</p>
+</div>
+{% endblock %}

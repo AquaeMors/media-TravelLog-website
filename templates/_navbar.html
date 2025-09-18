@@ -2,18 +2,25 @@
 <nav class="navbar bg-white border-bottom sticky-top">
   <div class="container">
     <a class="navbar-brand fw-semibold" href="/home">Home</a>
-    <!-- <button id="themeToggle" class="btn btn-sm btn-outline-secondary">
-      <i class="bi"></i>
-    </button> -->
 
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span class="text-muted small">Signed in as <strong>{{ current_user.username }}</strong></span>
 
+      {# Moderation shortcut for approvers (existing behavior) #}
       {% if current_user and current_user.can_approve_users %}
-      <a class="btn btn-outline-secondary btn-sm" href="/admin/requests">User Requests</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_user_requests') }}">
+          User Requests
+        </a>
       {% endif %}
 
-      <form method="post" action="/logout" class="m-0 ms-2">
+      {# NEW: Admin link, only for admins #}
+      {% if current_user and current_user.is_admin %}
+        <a class="btn btn-warning btn-sm" href="{{ url_for('admin_users') }}">
+          <i class="bi bi-people-gear"></i> Admin
+        </a>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('logout') }}" class="m-0 ms-2">
         <button class="btn btn-outline-danger btn-sm">Logout</button>
       </form>
     </div>
