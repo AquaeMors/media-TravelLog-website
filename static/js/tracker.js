@@ -24,7 +24,7 @@
     });
   });
 
-  // ---------- Field visibility (no status/rating) ----------
+  // ---------- Field visibility (per media type) ----------
   const FIELD_GROUPS = {
     chapters:       ['book','manga','manhwa'],
     seasons:        ['show','anime'],
@@ -103,7 +103,9 @@
      or data-bs-target="#item123" ← fallback until you update markup
 ------------------------------------------------------------------ */
 (function () {
-  const INTERACTIVE_SEL = 'a,button,[role="button"],input,select,textarea,label,[data-row-ignore],.js-add-tag,.tag-more';
+  // IMPORTANT: do NOT include [role="button"] here; the row itself has it.
+  const INTERACTIVE_SEL =
+    'a,button,input,select,textarea,label,[data-row-ignore],.js-add-tag,.tag-more';
 
   function isInteractiveClick(target) {
     return !!target.closest(INTERACTIVE_SEL);
@@ -219,6 +221,7 @@
       const threshold = parseInt(list.dataset.maxXs || '3', 10);
       collapse(list, threshold);
     }
+    e.stopPropagation(); // never trigger the row click
   });
 
   window.addEventListener('resize', debounce(updateAll, 120));
@@ -228,7 +231,6 @@
 
 // ---- Responsive tag chips: collapse on small viewports ----
 (function () {
-  // Breakpoint-based minimums; we'll also refine by container width
   const BREAKS = [
     { mq: "(max-width: 575.98px)", limit: 3 }, // xs
     { mq: "(max-width: 767.98px)", limit: 5 }, // sm
@@ -236,10 +238,7 @@
   ];
 
   function limitFor(list) {
-    // Start with breakpoint limit
     for (const b of BREAKS) if (window.matchMedia(b.mq).matches) return b.limit;
-
-    // On larger screens, roughly size by available width (avg chip ≈ 120px)
     const w = list.clientWidth || 0;
     return Math.max(6, Math.floor(w / 120));
   }
@@ -249,14 +248,12 @@
     if (!pills.length) return;
 
     const moreBtn = list.querySelector(".tag-more");
-    // If the author provided a strict cap for phones, use it on xs
     let limit = limitFor(list);
     const maxXs = parseInt(list.dataset.maxXs || "0", 10);
     if (maxXs && window.matchMedia("(max-width: 575.98px)").matches) {
       limit = maxXs;
     }
 
-    // Hide beyond the limit
     let hiddenCount = 0;
     pills.forEach((p, i) => {
       const hide = i >= limit;
@@ -266,10 +263,8 @@
 
     if (!moreBtn) return;
 
-    // Show/Hide the "See all" pill
     moreBtn.classList.toggle("d-none", hiddenCount === 0);
 
-    // Bind once
     if (!moreBtn.dataset.bound) {
       moreBtn.dataset.bound = "1";
       moreBtn.addEventListener("click", (e) => {
@@ -284,7 +279,6 @@
     document.querySelectorAll(".tag-list").forEach(collapseList);
   }
 
-  // Recalculate on resize/rotation per-list (more accurate than window resize)
   const ro = new ResizeObserver((entries) => {
     for (const entry of entries) collapseList(entry.target);
   });
@@ -294,7 +288,6 @@
     initAll();
   });
 
-  // If your theme toggle flips layout metrics, recalc as well
   window.addEventListener("themechange", initAll);
 })();
 
@@ -322,16 +315,13 @@
 
   async function refreshRows() {
     const params = buildQuery();
-    // Update URL bar without reload
     history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
 
-    // Fetch fresh tbody HTML
     const res = await fetch(`/tracker/rows?${params.toString()}`, { headers: { 'X-Requested-With': 'fetch' } });
     const html = await res.text();
     const tbody = document.getElementById('rows-tbody');
     if (tbody) {
-      // replace the whole <tbody id="rows-tbody"> with the new one
-      tbody.outerHTML = html;
+      tbody.outerHTML = html; // replace the whole <tbody id="rows-tbody">
     }
     renderActiveTags();
   }
@@ -393,7 +383,7 @@
     }
   });
 
-  // If you submit the Filter form, keep it ajaxy too
+  // Keep the Filter form ajax-y
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     refreshRows();
