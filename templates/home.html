@@ -17,7 +17,7 @@
     {% for c in cards %}
       {# Hide the Wedding card from non-admins #}
       {% set is_wedding = (c.key == 'wedding') %}
-      {% set hide_wedding = is_wedding and not (current_user and current_user.is_admin) %}
+        {% set hide_wedding = is_wedding and not (current_user and current_user.is_admin) %}
       {% if not hide_wedding %}
       <div class="col-12 col-sm-6 col-lg-4">
         <!-- position-relative enables the stretched-link;

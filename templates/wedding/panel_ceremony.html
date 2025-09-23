@@ -1,0 +1,27 @@
+<form class="row g-2 mb-3" method="post" action="{{ url_for('wedding_add_ceremony_step') }}" data-panel-refresh>
+  <div class="col-12 col-md-1"><input class="form-control" name="order" placeholder="#" inputmode="numeric"></div>
+  <div class="col-12 col-md-4"><input class="form-control" name="title" placeholder="Step title (e.g., Processional)"></div>
+  <div class="col-12 col-md-6"><input class="form-control" name="notes" placeholder="Notes (readings, communion details, etc.)"></div>
+  <div class="col-12 col-md-1 d-grid"><button class="btn btn-primary">Add</button></div>
+</form>
+
+<div class="list-group">
+  {% for s in steps %}
+  <div class="list-group-item d-flex justify-content-between align-items-start">
+    <div>
+      <span class="badge text-bg-secondary me-2">#{{ s.meta.order }}</span>
+      <strong>{{ s.title }}</strong>
+      {% if s.notes %}<div class="text-muted small">{{ s.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('wedding_delete', item_id=s.id) }}" data-panel-refresh>
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted">No ceremony steps yet.</div>
+  {% endfor %}
+</div>
+
+<div class="mt-3">
+  <a class="btn btn-outline-secondary btn-sm disabled" role="button" aria-disabled="true">Export Ceremony (coming soon)</a>
+</div>

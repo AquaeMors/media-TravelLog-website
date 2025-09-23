@@ -1,0 +1,194 @@
+/* ===== Theme tokens (light/dark) ===== */
+:root{
+  --wed-bg: #fffaf7;         /* ivory paper (fallback color) */
+  --wed-ink: #232425;        /* text */
+  --wed-blush: #f6d7d7;      /* accent 1 */
+  --wed-sage: #bfeac4;       /* accent 2 (menu) */
+  --wed-champ: #f3e6c4;      /* accent 3 */
+  --wed-gold: #c6a86a;       /* gold line */
+
+  --panel-radius: 16px;
+  --panel-shadow: 0 14px 36px rgba(0,0,0,.14), 0 6px 12px rgba(0,0,0,.06);
+
+  --nav-height: 56px;        /* navbar height fallback */
+}
+html[data-theme="dark"]{
+  --wed-bg: #111513;         /* warm dark fallback */
+  --wed-ink: #eaefe8;
+  --wed-blush: #4b3d46;
+  --wed-sage: #193a2a;       /* dark faded green */
+  --wed-champ: #2a241a;
+  --wed-gold: #b79a66;
+  --panel-shadow: 0 18px 40px rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.28);
+}
+
+/* Panel menu background vars (light/dark) */
+html:not([data-theme="dark"]){
+  --panel-menu-bg: #dff5e1;
+  --panel-menu-border: #bfeac4;
+}
+html[data-theme="dark"]{
+  --panel-menu-bg: #0f2a21;     /* dark faded green */
+  --panel-menu-border: #1c4b3a;
+}
+
+/* ===== Global typography + MAIN PAGE BACKGROUND ===== */
+body{
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  color: var(--wed-ink);
+
+  /* the paper background you asked for */
+  background-color: var(--wed-bg); /* fallback color under the image */
+  background-image: url("/assets/lovenote.jpg");
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;  /* desktop parallax feel */
+}
+@media (max-width: 991.98px){
+  /* iOS/mobile: avoid jank from fixed backgrounds */
+  body{ background-attachment: scroll; }
+}
+
+h1,h2,h3,h4,h5,h6, .display-1,.display-2,.display-3{
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  letter-spacing: .2px;
+  font-weight: 600;
+}
+
+/* Kill any previous gradient/noise layers */
+body::before, body::after { content: none !important; }
+
+/* ===== Panel Menu Bar (fixed under navbar) ===== */
+.w-menu-bar{
+  position: fixed; left:0; right:0; top: var(--nav-height);
+  background: var(--panel-menu-bg);
+  border-bottom: 1px solid var(--panel-menu-border);
+  z-index: 1029;
+  backdrop-filter: saturate(130%) blur(6px);
+  transition: padding .18s ease, box-shadow .18s ease, height .18s ease;
+  /* subtle linen pattern + drop shadow */
+  background-image:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-menu-bg) 90%, #fff0), var(--panel-menu-bg)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 2px, rgba(255,255,255,0) 2px 6px);
+  box-shadow:
+    0 6px 14px rgba(0,0,0,.06),
+    inset 0 -1px 0 rgba(0,0,0,.08);
+}
+.w-menu-bar.compact{ box-shadow: 0 4px 10px rgba(0,0,0,.08), inset 0 -1px 0 rgba(0,0,0,.12); }
+#panel-menu .container{ transition: padding .18s ease, height .18s ease; }
+.w-menu-bar.compact #panel-menu .container{ padding-top:.25rem!important; padding-bottom:.25rem!important; }
+
+/* Spacer so content starts below the fixed menu */
+.w-stage-spacer{ height: var(--panel-menu-height, 60px); }
+
+/* ===== Menu buttons ===== */
+.pm-btn{
+  --radius: 999px;
+  padding: .35rem .7rem;
+  border-radius: var(--radius);
+  font-size: .9rem; line-height: 1.1;
+  border: 1px solid var(--bs-primary);
+  color: var(--bs-primary);
+  background: transparent;
+  transition: background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .06s ease;
+}
+.pm-btn:hover{
+  background: color-mix(in oklab, var(--bs-primary) 14%, transparent);
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+.pm-btn:active{ transform: scale(.98); }
+.pm-btn.active{
+  background: var(--pm-color, var(--bs-primary));
+  color: var(--bs-body-bg);
+  border-color: var(--pm-color, var(--bs-primary));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--pm-color) 60%, transparent),
+    0 6px 14px color-mix(in oklab, var(--pm-color) 16%, transparent);
+  position: relative;
+}
+.pm-btn.active::before{
+  content:""; position:absolute; left:10%; right:10%; top:-3px; height:2px; border-radius:2px;
+  background: var(--wed-gold); opacity:.9;
+}
+html[data-theme="dark"] .pm-btn.active{ filter: brightness(1.05) saturate(0.95); }
+
+/* ===== PANELS (structure only—no solid background here) ===== */
+.w-panel{
+  position: fixed;
+  top: calc(var(--nav-height) + var(--panel-menu-height, 60px));
+  bottom: 12px;
+  left: 12px;
+  width: min(50vw, 920px);
+  /* IMPORTANT: transparent so our paper images show */
+  background-color: transparent;
+  border: 1px solid var(--bs-border-color);
+  box-shadow: var(--panel-shadow);
+  z-index: 1030;
+  overflow: hidden;
+  border-radius: var(--panel-radius);
+  transform: translateX(calc(-100% - 12px));
+  transition: transform .42s cubic-bezier(.22,.61,.36,1), box-shadow .2s ease, opacity .2s ease;
+  opacity: .98;
+}
+.w-panel.right{
+  right: 12px; left: auto;
+  transform: translateX(calc(100% + 12px));
+}
+.w-panel.open{ transform: translateX(0); }
+
+/* Panel header tint */
+.w-panel .w-head{
+  position: sticky; top: 0;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-accent, var(--bs-primary)) 16%, transparent), transparent 70%);
+  border-bottom: 2px solid var(--panel-accent, var(--bs-primary));
+  box-shadow: inset 0 -3px 0 0 color-mix(in oklab, var(--panel-accent, var(--bs-primary)) 18%, transparent);
+  z-index: 1;
+}
+.w-panel .w-body{ padding: 1rem 1.25rem 2rem; height: 100%; overflow: auto; }
+
+/* ===== PANEL PAPER BACKGROUNDS ===== */
+/* Readability overlay: lower alpha so the paper shows more */
+html:not([data-theme="dark"]){ --panel-overlay: rgba(255,255,255,.38); } /* was .86 */
+html[data-theme="dark"]{       --panel-overlay: rgba(0,0,0,.25); }
+
+/* Left panel uses notepad-left.jpg */
+.w-panel.left{
+  background-image:
+    linear-gradient(var(--panel-overlay), var(--panel-overlay)),
+    url("/assets/notepad-left.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+}
+
+/* Right panel uses notepad-right.jpg */
+.w-panel.right{
+  background-image:
+    linear-gradient(var(--panel-overlay), var(--panel-overlay)),
+    url("/assets/notepad-right.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+}
+
+/* Masonry helpers used in Boards */
+.masonry{ column-count:2; column-gap:.75rem; }
+@media (min-width:576px){ .masonry{ column-count:3; } }
+@media (min-width:992px){ .masonry{ column-count:4; } }
+.masonry .m-item{ break-inside:avoid; margin-bottom:.75rem; }
+.masonry .card img{ width:100%; height:auto; display:block; }
+.muted{ color: var(--bs-secondary-color); }
+
+/* Mobile: panel takes full width */
+@media (max-width: 991.98px){
+  .w-panel{ left:8px; right:8px; width:calc(100vw - 16px); }
+  .w-panel.right{ right:8px; }
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce){
+  .w-panel, .pm-btn, .w-menu-bar, #panel-menu .container{ transition: none !important; }
+}

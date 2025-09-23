@@ -1,0 +1,101 @@
+<!-- Add Table -->
+<form class="row g-2 mb-3" method="post" action="{{ url_for('seating_table_add') }}" data-panel-refresh>
+  <div class="col-12 col-md-4"><input class="form-control" name="name" placeholder="Table name/number" required></div>
+  <div class="col-6 col-md-2"><input class="form-control" name="capacity" type="number" min="1" value="8"></div>
+  <div class="col-6 col-md-2 d-grid"><button class="btn btn-primary">Add Table</button></div>
+</form>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <h6 class="mb-2">Tables</h6>
+    <div class="list-group">
+      {% for t in tables %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <strong>{{ t.name }}</strong>
+            <span class="badge text-bg-light border ms-2">cap {{ t.capacity }}</span>
+            <div class="mt-2 d-flex gap-2">
+              <form class="d-flex gap-2" method="post" action="{{ url_for('seating_table_photo', table_id=t.id) }}" enctype="multipart/form-data" data-panel-refresh>
+                <input type="hidden" name="which" value="tiny">
+                <input class="form-control form-control-sm" type="file" name="image" accept="image/*">
+                <button class="btn btn-sm btn-outline-primary">Tiny photo</button>
+              </form>
+              <form class="d-flex gap-2" method="post" action="{{ url_for('seating_table_photo', table_id=t.id) }}" enctype="multipart/form-data" data-panel-refresh>
+                <input type="hidden" name="which" value="rosie">
+                <input class="form-control form-control-sm" type="file" name="image" accept="image/*">
+                <button class="btn btn-sm btn-outline-primary">Rosie photo</button>
+              </form>
+            </div>
+          </div>
+          <div class="text-muted small">
+            {% set count = (guests | selectattr('table_id','equalto', t.id) | list | length) %}
+            {{ count }} seated
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="list-group-item text-muted">No tables yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <h6 class="mb-2">Guests</h6>
+    <!-- Add Guest -->
+    <form class="row g-2 mb-3" method="post" action="{{ url_for('seating_guest_add') }}" data-panel-refresh>
+      <div class="col-12 col-md-4"><input class="form-control" name="name" placeholder="Guest name" required></div>
+      <div class="col-6 col-md-2">
+        <select class="form-select" name="side">
+          <option value="">Side</option>
+          <option value="Tiny">Tiny</option>
+          <option value="Rosie">Rosie</option>
+          <option value="Both">Both</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3"><input class="form-control" name="email" placeholder="Email (optional)"></div>
+      <div class="col-6 col-md-3"><input class="form-control" name="phone" placeholder="Phone (optional)"></div>
+      <div class="col-6 col-md-3">
+        <select class="form-select" name="rsvp">
+          <option value="unknown">RSVP ?</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-4">
+        <select class="form-select" name="table_id">
+          <option value="">No table</option>
+          {% for t in tables %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid"><button class="btn btn-primary">Add Guest</button></div>
+    </form>
+
+    <div class="list-group">
+      {% for g in guests %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ g.name }}</strong>
+            {% if g.side %}<span class="badge text-bg-light border ms-1">{{ g.side }}</span>{% endif %}
+            {% if g.rsvp != 'unknown' %}<span class="badge {{ 'text-bg-success' if g.rsvp=='yes' else 'text-bg-danger' }} ms-1">{{ g.rsvp }}</span>{% endif %}
+            {% if g.table %}<span class="badge text-bg-secondary ms-1">{{ g.table.name }}</span>{% endif %}
+          </div>
+          <form class="d-flex gap-2" method="post" action="{{ url_for('seating_guest_assign') }}" data-panel-refresh>
+            <input type="hidden" name="guest_id" value="{{ g.id }}">
+            <select class="form-select form-select-sm" name="table_id" style="max-width: 180px;">
+              <option value="">No table</option>
+              {% for t in tables %}
+                <option value="{{ t.id }}" {% if g.table_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-outline-primary">Move</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="list-group-item text-muted">No guests yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

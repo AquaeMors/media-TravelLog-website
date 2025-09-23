@@ -1,0 +1,35 @@
+<form class="row g-2 mb-3" method="post" action="{{ url_for('wedding_add_reception_event') }}" data-panel-refresh>
+  <div class="col-12 col-md-1"><input class="form-control" name="order" placeholder="#" inputmode="numeric"></div>
+  <div class="col-12 col-md-4"><input class="form-control" name="title" placeholder="Event (e.g., First Dance)"></div>
+  <div class="col-12 col-md-3">
+    <select class="form-select" name="etype">
+      <option value="event" selected>Event</option>
+      <option value="speech">Speech</option>
+      <option value="dance">Dance</option>
+      <option value="announcement">Announcement</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-2 d-grid"><button class="btn btn-primary">Add</button></div>
+</form>
+
+<div class="list-group">
+  {% for e in events %}
+  <div class="list-group-item d-flex justify-content-between align-items-start">
+    <div>
+      <span class="badge text-bg-secondary me-2">#{{ e.meta.order }}</span>
+      <span class="badge text-bg-light border me-2">{{ e.meta.type or 'event' }}</span>
+      <strong>{{ e.title }}</strong>
+      {% if e.notes %}<div class="text-muted small">{{ e.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('wedding_delete', item_id=e.id) }}" data-panel-refresh>
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted">No reception events yet.</div>
+  {% endfor %}
+</div>
+
+<div class="mt-3">
+  <a class="btn btn-outline-secondary btn-sm disabled" role="button" aria-disabled="true">Export Reception (coming soon)</a>
+</div>

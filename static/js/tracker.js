@@ -392,3 +392,31 @@
   // initial paint of active tag chips
   renderActiveTags();
 })();
+
+// --- Compact-on-scroll for the Panel Menu ---
+(function(){
+  const menuBar = document.getElementById('panel-menu');
+  if (!menuBar) return;
+
+  let lastIsCompact = false;
+  let ticking = false;
+
+  function onScroll(){
+    if (ticking) return;
+    window.requestAnimationFrame(()=>{
+      const isCompact = window.scrollY > 6;   // tweak threshold if you like
+      if (isCompact !== lastIsCompact){
+        menuBar.classList.toggle('compact', isCompact);
+        // Recalculate its height so panels sit exactly below it
+        if (typeof measureMenu === 'function') measureMenu();
+      }
+      lastIsCompact = isCompact;
+      ticking = false;
+    });
+    ticking = true;
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // run once at start
+  onScroll();
+})();

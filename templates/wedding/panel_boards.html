@@ -1,0 +1,75 @@
+<div class="mb-3">
+  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='rings') }}" enctype="multipart/form-data" data-panel-refresh>
+    <div class="col-12 col-md-3"><strong>Upload Rings</strong></div>
+    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
+    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
+  </form>
+</div>
+
+<div class="masonry">
+  {% for it in rings %}
+  <div class="m-item">
+    <div class="card shadow-sm">
+      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="ring">{% endif %}
+      <div class="card-body p-2 d-flex justify-content-between">
+        <small class="text-muted">{{ it.title }}</small>
+        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+          <button class="btn btn-sm btn-outline-danger">×</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<hr class="my-4">
+
+<div class="mb-3">
+  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='cakes') }}" enctype="multipart/form-data" data-panel-refresh>
+    <div class="col-12 col-md-3"><strong>Upload Cakes</strong></div>
+    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
+    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
+  </form>
+</div>
+
+<div class="masonry">
+  {% for it in cakes %}
+  <div class="m-item">
+    <div class="card shadow-sm">
+      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="cake">{% endif %}
+      <div class="card-body p-2 d-flex justify-content-between">
+        <small class="text-muted">{{ it.title }}</small>
+        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+          <button class="btn btn-sm btn-outline-danger">×</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<hr class="my-4">
+
+<div class="mb-3">
+  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='photos') }}" enctype="multipart/form-data" data-panel-refresh data-panel-refresh>
+    <div class="col-12 col-md-3"><strong>Upload Photo Ideas</strong></div>
+    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
+    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
+  </form>
+</div>
+
+<div class="masonry">
+  {% for it in photos %}
+  <div class="m-item">
+    <div class="card shadow-sm">
+      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="photo">{% endif %}
+      <div class="card-body p-2 d-flex justify-content-between">
+        <small class="text-muted">{{ it.title }}</small>
+        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+          <button class="btn btn-sm btn-outline-danger">×</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

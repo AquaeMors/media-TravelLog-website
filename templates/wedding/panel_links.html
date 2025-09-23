@@ -1,0 +1,23 @@
+<form class="row g-2 mb-3" method="post" action="{{ url_for('wedding_add_link') }}" data-panel-refresh>
+  <div class="col-12 col-md-3"><input class="form-control" name="title" placeholder="Title" required></div>
+  <div class="col-12 col-md-6"><input class="form-control" name="url" placeholder="https://…" required></div>
+  <div class="col-6 col-md-2"><input class="form-control" name="url_ts" placeholder="mm:ss or 90"></div>
+  <div class="col-6 col-md-1 d-grid"><button class="btn btn-primary">Save</button></div>
+</form>
+
+<div class="list-group">
+  {% for it in items %}
+  <div class="list-group-item d-flex justify-content-between align-items-start">
+    <div>
+      <a href="{{ it.url }}" target="_blank" rel="noopener"><strong>{{ it.title }}</strong></a>
+      {% if it.url_ts %}<span class="badge text-bg-secondary ms-2">{{ it.url_ts }}s</span>{% endif %}
+      {% if it.notes %}<div class="text-muted small">{{ it.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted">No links yet.</div>
+  {% endfor %}
+</div>

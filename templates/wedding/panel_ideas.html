@@ -1,0 +1,21 @@
+<form class="row g-2 mb-3" method="post" action="{{ url_for('wedding_add_idea') }}" data-panel-refresh>
+  <div class="col-12 col-md-4"><input class="form-control" name="title" placeholder="Idea title" required></div>
+  <div class="col-12 col-md-6"><input class="form-control" name="notes" placeholder="Notes (optional)"></div>
+  <div class="col-12 col-md-2 d-grid"><button class="btn btn-primary">Add</button></div>
+</form>
+
+<ul class="list-group">
+  {% for it in items %}
+  <li class="list-group-item d-flex justify-content-between align-items-start">
+    <div>
+      <strong>{{ it.title }}</strong>
+      {% if it.notes %}<div class="text-muted small">{{ it.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="list-group-item text-muted">No ideas yet.</li>
+  {% endfor %}
+</ul>

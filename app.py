@@ -129,6 +129,20 @@ class Trip(db.Model):
     photos = db.relationship("Photo", backref="trip", lazy=True, cascade="all, delete-orphan")
     user_comments = db.relationship("Comment", backref="trip", lazy=True, cascade="all, delete-orphan")
 
+class WeddingItem(db.Model):
+    __tablename__ = "wedding_item"
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(20), nullable=False)   # idea, link, ring, cake, photo, vendor, venue, task, ceremony, reception
+    title = db.Column(db.String(255), nullable=False)
+    notes = db.Column(db.Text)
+    url = db.Column(db.String(1024))
+    url_ts = db.Column(db.Integer)
+    image_path = db.Column(db.String(1024))
+    tags = db.Column(db.String(255))
+    meta = db.Column(db.JSON, default=dict)           # <-- NEW: structured fields live here
+    created_by_user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     trip_id = db.Column(db.Integer, db.ForeignKey("trip.id"), nullable=False, index=True)
@@ -138,6 +152,38 @@ class Photo(db.Model):
     mime_type = db.Column(db.String(100))
     size_bytes = db.Column(db.Integer)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SeatingTable(db.Model):
+    __tablename__ = "seating_table"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)     # e.g., "Table 5"
+    capacity = db.Column(db.Integer, default=8)
+    img_tiny = db.Column(db.String(300))               # baby photo (Tiny)
+    img_rosie = db.Column(db.String(300))              # baby photo (Rosie)
+
+class Guest(db.Model):
+    __tablename__ = "guest"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    side = db.Column(db.String(20))                    # 'Tiny' | 'Rosie' | 'Both' | None
+    email = db.Column(db.String(200))
+    phone = db.Column(db.String(50))
+    rsvp = db.Column(db.String(20), default="unknown") # 'yes' | 'no' | 'unknown'
+    notes = db.Column(db.Text)
+    table_id = db.Column(db.Integer, db.ForeignKey("seating_table.id"))
+    table = db.relationship("SeatingTable", lazy="joined")
+
+class BudgetItem(db.Model):
+    __tablename__ = "budget_item"
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(80), nullable=False) # e.g., 'Venue', 'Catering', 'Rings'
+    item = db.Column(db.String(200), nullable=False)    # e.g., 'Deposit', 'Cake'
+    estimate = db.Column(db.Integer, default=0)         # store cents to avoid float drift (later)
+    actual = db.Column(db.Integer)                      # cents; nullable
+    due_date = db.Column(db.Date)
+    paid = db.Column(db.Boolean, default=False)
+    vendor_url = db.Column(db.String(600))
+    notes = db.Column(db.Text)
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -181,7 +227,14 @@ class RegistrationRequest(db.Model):
 # ---------------- One-time setup & light migrations ----------------
 os.makedirs(app.config["UPLOAD_ROOT"], exist_ok=True)
 with app.app_context():
+    
     db.create_all()
+    # Add meta JSON column to wedding_item if missing
+    cols = [row[1] for row in db.session.execute(text("PRAGMA table_info(wedding_item)")).fetchall()]
+    if "meta" not in cols:
+        db.session.execute(text("ALTER TABLE wedding_item ADD COLUMN meta TEXT DEFAULT '{}'"))
+        db.session.commit()
+
 
     # user table
     cols_user = [r[1] for r in db.session.execute(text("PRAGMA table_info(user)")).fetchall()]
@@ -258,7 +311,7 @@ with app.app_context():
     ensure_card("fitness", "Fitness",
                 "Section for keeping track of and looking at trends for personal fitness", "/fitness", 30)
     ensure_card("wedding", "Wedding",
-            "Admin-only planning & tools.", "/wedding", 40)
+            "Plan + brainstorm, all in one place (admins only).", "/wedding", 40)
     
     db.session.commit()
 
@@ -272,6 +325,11 @@ def favicon_root():
         "favicon.ico",
         max_age=31536000  # replaces cache_timeout
     )
+
+@app.route("/assets/<path:filename>")
+def assets(filename):
+    folder = os.path.join(app.root_path, "assets")
+    return send_from_directory(folder, filename)
 
 @app.context_processor
 def inject_user():
@@ -466,6 +524,37 @@ def save_item_cover(file_storage, item_id) -> tuple[str, str] | tuple[None, None
     rel_thumb = str(pathlib.Path("tracker") / str(item_id) / "thumbs" / thumb_name)
     return rel_original, rel_thumb
 
+def save_wedding_image(file_storage, bucket: str, item_id: int):
+    """
+    bucket: one of 'rings','cakes','photos'
+    returns (rel_original, rel_thumb) or (None, None)
+    """
+    if not file_storage or not file_storage.filename:
+        return None, None
+
+    original = secure_filename(file_storage.filename)
+    ext = pathlib.Path(original).suffix.lower()
+
+    head = file_storage.stream.read(16); file_storage.stream.seek(0)
+    if not _looks_like_image(head, ext):
+        return None, None
+
+    base_dir = pathlib.Path(app.config["UPLOAD_ROOT"]) / "wedding" / bucket / str(item_id)
+    thumbs_dir = base_dir / "thumbs"
+    base_dir.mkdir(parents=True, exist_ok=True)
+    thumbs_dir.mkdir(parents=True, exist_ok=True)
+
+    unique = f"{uuid.uuid4().hex}{ext if ext in ALLOWED_EXTS else '.bin'}"
+    dest = base_dir / unique
+    file_storage.save(dest)
+
+    thumb_name = f"{pathlib.Path(unique).stem}.jpg"
+    thumb_path = thumbs_dir / thumb_name
+    make_thumbnail(dest, thumb_path, app.config["THUMB_MAX_PX"], app.config["THUMB_QUALITY"])
+
+    rel_original = str(pathlib.Path("wedding") / bucket / str(item_id) / unique)
+    rel_thumb = str(pathlib.Path("wedding") / bucket / str(item_id) / "thumbs" / thumb_name)
+    return rel_original, rel_thumb
 
 # ---------------- Routes ----------------
 @app.get("/")
@@ -1308,8 +1397,303 @@ def handle_413(e):
 @app.get("/wedding")
 @login_required
 @admin_required
-def wedding():
-    return render_template("wedding.html")
+def wedding_index():
+    # latest first so new stuff floats up
+    ideas = (WeddingItem.query.filter_by(kind="idea")
+             .order_by(WeddingItem.created_at.desc()).limit(20).all())
+    links = (WeddingItem.query.filter_by(kind="link")
+             .order_by(WeddingItem.created_at.desc()).limit(20).all())
+    rings = (WeddingItem.query.filter_by(kind="ring")
+             .order_by(WeddingItem.created_at.desc()).limit(24).all())
+    cakes = (WeddingItem.query.filter_by(kind="cake")
+             .order_by(WeddingItem.created_at.desc()).limit(24).all())
+    photos = (WeddingItem.query.filter_by(kind="photo")
+              .order_by(WeddingItem.created_at.desc()).limit(24).all())
+    vendors = (WeddingItem.query.filter(WeddingItem.kind.in_(("vendor","venue")))
+               .order_by(WeddingItem.title.asc()).all())
+    return render_template("wedding/index.html", ideas=ideas, links=links,
+                           rings=rings, cakes=cakes, photos=photos, vendors=vendors)
+
+@app.post("/wedding/idea")
+@login_required
+@admin_required
+def wedding_add_idea():
+    title = (request.form.get("title") or "").strip()
+    notes = (request.form.get("notes") or "").strip()
+    if not title:
+        flash("Idea needs at least a short title.", "warning")
+        return redirect(url_for("wedding_index"))
+    item = WeddingItem(kind="idea", title=title, notes=notes,
+                       created_by_user_id=session.get("user_id"))
+    db.session.add(item); db.session.commit()
+    flash("Idea saved.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.get("/wedding/panel")
+@login_required
+@admin_required
+def wedding_panel():
+    kind = (request.args.get("kind") or "").strip().lower()
+    if kind == "ideas":
+        items = WeddingItem.query.filter_by(kind="idea").order_by(WeddingItem.created_at.desc()).limit(50).all()
+        return render_template("wedding/panel_ideas.html", items=items)
+
+    if kind == "links":
+        items = WeddingItem.query.filter_by(kind="link").order_by(WeddingItem.created_at.desc()).limit(50).all()
+        return render_template("wedding/panel_links.html", items=items)
+
+    if kind == "boards":
+        rings = WeddingItem.query.filter_by(kind="ring").order_by(WeddingItem.created_at.desc()).all()
+        cakes = WeddingItem.query.filter_by(kind="cake").order_by(WeddingItem.created_at.desc()).all()
+        photos = WeddingItem.query.filter_by(kind="photo").order_by(WeddingItem.created_at.desc()).all()
+        return render_template("wedding/panel_boards.html", rings=rings, cakes=cakes, photos=photos)
+
+    if kind == "venues":
+        venues = WeddingItem.query.filter_by(kind="venue").order_by(WeddingItem.title.asc()).all()
+        vendors = WeddingItem.query.filter_by(kind="vendor").order_by(WeddingItem.title.asc()).all()
+        return render_template("wedding/panel_venues.html", venues=venues, vendors=vendors)
+
+    if kind == "ceremony":
+        steps = WeddingItem.query.filter_by(kind="ceremony").order_by(WeddingItem.meta["order"].as_integer()).all()
+        return render_template("wedding/panel_ceremony.html", steps=steps)
+
+    if kind == "reception":
+        events = WeddingItem.query.filter_by(kind="reception").order_by(WeddingItem.meta["order"].as_integer()).all()
+        return render_template("wedding/panel_reception.html", events=events)
+
+    if kind == "tasks":
+        tasks = WeddingItem.query.filter_by(kind="task").order_by(WeddingItem.meta["due"].desc().nullslast()).all()
+        return render_template("wedding/panel_tasks.html", tasks=tasks)
+    
+    if kind == "seating":
+        tables = SeatingTable.query.order_by(SeatingTable.name.asc()).all()
+        guests = Guest.query.order_by(Guest.name.asc()).all()
+        return render_template("wedding/panel_seating.html", tables=tables, guests=guests)
+
+    if kind == "budget":
+        items = BudgetItem.query.order_by(BudgetItem.category.asc(), BudgetItem.item.asc()).all()
+        total_est = sum(i.estimate or 0 for i in items)
+        total_act = sum(i.actual or 0 for i in items if i.actual is not None)
+        return render_template("wedding/panel_budget.html", items=items,
+                               total_est=total_est, total_act=total_act)
+
+    return ("Unknown panel", 400)
+
+@app.post("/wedding/seating/table/add")
+@login_required
+@admin_required
+def seating_table_add():
+    name = (request.form.get("name") or "").strip() or "Table"
+    capacity = int(request.form.get("capacity") or 8)
+    t = SeatingTable(name=name, capacity=capacity)
+    db.session.add(t); db.session.commit()
+    flash("Table added.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/seating/guest/add")
+@login_required
+@admin_required
+def seating_guest_add():
+    name = (request.form.get("name") or "").strip()
+    side = (request.form.get("side") or "").strip() or None
+    email = (request.form.get("email") or "").strip() or None
+    phone = (request.form.get("phone") or "").strip() or None
+    rsvp = (request.form.get("rsvp") or "unknown").strip()
+    table_id = request.form.get("table_id")
+    g = Guest(name=name, side=side, email=email, phone=phone, rsvp=rsvp,
+              table_id=int(table_id) if table_id else None)
+    db.session.add(g); db.session.commit()
+    flash("Guest added.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/seating/guest/assign")
+@login_required
+@admin_required
+def seating_guest_assign():
+    gid = int(request.form["guest_id"])
+    table_id = request.form.get("table_id")
+    g = Guest.query.get_or_404(gid)
+    g.table_id = int(table_id) if table_id else None
+    db.session.commit()
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/seating/table/photo/<int:table_id>")
+@login_required
+@admin_required
+def seating_table_photo(table_id):
+    table = SeatingTable.query.get_or_404(table_id)
+    which = request.form.get("which")  # 'tiny' or 'rosie'
+    f = request.files.get("image")
+    if which not in ("tiny", "rosie") or not f or not f.filename:
+        abort(400)
+    rel, thumb = save_wedding_image(f, "tables", table_id)
+    if which == "tiny": table.img_tiny = rel or table.img_tiny
+    else: table.img_rosie = rel or table.img_rosie
+    db.session.commit()
+    flash("Table photo saved.", "success")
+    return redirect(url_for("wedding_index"))
+
+# CEREMONY: add step (order defaults to next)
+@app.post("/wedding/ceremony/step")
+@login_required
+@admin_required
+def wedding_add_ceremony_step():
+    title = (request.form.get("title") or "").strip()
+    notes = (request.form.get("notes") or "").strip()
+    order = request.form.get("order")
+    try:
+        order = int(order) if order is not None and order != "" else None
+    except:
+        order = None
+    if order is None:
+        last = db.session.execute(text("SELECT MAX(json_extract(meta,'$.order')) FROM wedding_item WHERE kind='ceremony'")).scalar()
+        order = int(last) + 1 if last is not None else 1
+    it = WeddingItem(kind="ceremony", title=title or f"Step {order}", notes=notes,
+                     meta={"order": order}, created_by_user_id=session.get("user_id"))
+    db.session.add(it); db.session.commit()
+    flash("Ceremony step added.", "success")
+    return redirect(url_for("wedding_index"))
+
+# RECEPTION: add event (order + type)
+@app.post("/wedding/reception/event")
+@login_required
+@admin_required
+def wedding_add_reception_event():
+    title = (request.form.get("title") or "").strip()
+    etype = (request.form.get("etype") or "event").strip()   # e.g., 'speech','dance','announcement'
+    order = request.form.get("order")
+    try:
+        order = int(order) if order else None
+    except:
+        order = None
+    if order is None:
+        last = db.session.execute(text("SELECT MAX(json_extract(meta,'$.order')) FROM wedding_item WHERE kind='reception'")).scalar()
+        order = int(last) + 1 if last is not None else 1
+    it = WeddingItem(kind="reception", title=title or f"Event {order}",
+                     meta={"order": order, "type": etype}, created_by_user_id=session.get("user_id"))
+    db.session.add(it); db.session.commit()
+    flash("Reception event added.", "success")
+    return redirect(url_for("wedding_index"))
+
+# TASKS: add task with owner/due/status
+@app.post("/wedding/tasks/add")
+@login_required
+@admin_required
+def wedding_tasks_add():
+    title = (request.form.get("title") or "").strip()
+    owner = (request.form.get("owner") or "Tiny").strip()
+    due   = (request.form.get("due") or "").strip()
+    status = (request.form.get("status") or "todo").strip()
+    meta = {"owner": owner, "status": status}
+    if due:
+        meta["due"] = due   # ISO yyyy-mm-dd string is fine
+    it = WeddingItem(kind="task", title=title or "Untitled task",
+                     meta=meta, created_by_user_id=session.get("user_id"))
+    db.session.add(it); db.session.commit()
+    flash("Task added.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/link")
+@login_required
+@admin_required
+def wedding_add_link():
+    title = (request.form.get("title") or "").strip()
+    url   = (request.form.get("url") or "").strip()
+    ts    = (request.form.get("url_ts") or "").strip()
+    def to_seconds(s):
+        # supports "90", "1:30", "01:02:03"
+        if not s: return None
+        parts = [int(p) for p in s.split(":")]
+        if len(parts) == 1: return parts[0]
+        if len(parts) == 2: return parts[0]*60 + parts[1]
+        if len(parts) == 3: return parts[0]*3600 + parts[1]*60 + parts[2]
+        return None
+    if not title or not url:
+        flash("Link needs a title and a URL.", "warning")
+        return redirect(url_for("wedding_index"))
+    item = WeddingItem(kind="link", title=title, url=url, url_ts=to_seconds(ts),
+                       created_by_user_id=session.get("user_id"))
+    db.session.add(item); db.session.commit()
+    flash("Link saved.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.get("/wedding/export/ceremony")
+@login_required
+@admin_required
+def export_ceremony_html():
+    steps = WeddingItem.query.filter_by(kind="ceremony").all()
+    steps.sort(key=lambda i: (i.meta or {}).get("order", 10**9))
+    return render_template("wedding/export_ceremony.html", steps=steps)
+
+@app.post("/wedding/budget/add")
+@login_required
+@admin_required
+def budget_add():
+    cat = (request.form.get("category") or "General").strip()
+    item = (request.form.get("item") or "Item").strip()
+    est = int(float(request.form.get("estimate") or 0) * 100)  # dollars -> cents
+    act_raw = request.form.get("actual")
+    act = int(float(act_raw) * 100) if act_raw else None
+    paid = bool(request.form.get("paid"))
+    url  = (request.form.get("vendor_url") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+    due = request.form.get("due_date") or None
+    bi = BudgetItem(category=cat, item=item, estimate=est, actual=act, paid=paid,
+                    vendor_url=url, notes=notes, due_date=due)
+    db.session.add(bi); db.session.commit()
+    flash("Budget item added.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/upload/<bucket>")
+@login_required
+@admin_required
+def wedding_upload(bucket):
+    if bucket not in ("rings","cakes","photos"):
+        abort(400)
+    files = request.files.getlist("images")
+    saved = 0
+    for f in files or []:
+        it = WeddingItem(kind=bucket[:-1] if bucket != "photos" else "photo",  # ring/cake/photo
+                         title=(request.form.get("title") or "").strip() or bucket[:-1].title(),
+                         created_by_user_id=session.get("user_id"))
+        db.session.add(it); db.session.flush()
+        rel, thumb = save_wedding_image(f, bucket, it.id)
+        if rel and thumb:
+            it.image_path = thumb  # store thumb for grid; original is available via predictable path
+            saved += 1
+        else:
+            db.session.delete(it)
+    db.session.commit()
+    flash(f"Uploaded {saved} image(s) to {bucket}.", "success" if saved else "warning")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/vendor")
+@login_required
+@admin_required
+def wedding_add_vendor():
+    title = (request.form.get("title") or "").strip()
+    url   = (request.form.get("url") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+    kind  = (request.form.get("kind") or "vendor").strip().lower()  # 'vendor' or 'venue'
+    if kind not in ("vendor","venue"): kind = "vendor"
+    if not title:
+        flash("Please give it a name.", "warning")
+        return redirect(url_for("wedding_index"))
+    item = WeddingItem(kind=kind, title=title, url=url, notes=notes,
+                       created_by_user_id=session.get("user_id"))
+    db.session.add(item); db.session.commit()
+    flash("Saved.", "success")
+    return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/<int:item_id>/delete")
+@login_required
+@admin_required
+def wedding_delete(item_id):
+    it = WeddingItem.query.get_or_404(item_id)
+    db.session.delete(it); db.session.commit()
+    flash("Deleted.", "info")
+    return redirect(url_for("wedding_index"))
+
 
 @app.get("/healthz")
 def healthz():

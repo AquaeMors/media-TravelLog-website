@@ -1,0 +1,51 @@
+<form class="row g-2 mb-3" method="post" action="{{ url_for('wedding_add_vendor') }}" data-panel-refresh>
+  <div class="col-12 col-md-2">
+    <select class="form-select" name="kind">
+      <option value="venue">Venue</option>
+      <option value="vendor">Vendor</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-3"><input class="form-control" name="title" placeholder="Name" required></div>
+  <div class="col-12 col-md-4"><input class="form-control" name="url" placeholder="Website (optional)"></div>
+  <div class="col-12 col-md-3"><input class="form-control" name="notes" placeholder="Notes"></div>
+  <div class="col-12 col-md-12 d-grid mt-2"><button class="btn btn-primary">Add</button></div>
+</form>
+
+<div class="table-responsive">
+  <table class="table align-middle">
+    <thead><tr><th>Type</th><th>Name</th><th>Website</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+      {% for it in venues %}
+      <tr>
+        <td><span class="badge text-bg-secondary">venue</span></td>
+        <td>{{ it.title }}</td>
+        <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">link</a>{% endif %}</td>
+        <td class="text-muted small">{{ it.notes }}</td>
+        <td>
+          <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-muted">No venues yet.</td></tr>
+      {% endfor %}
+
+      {% for it in vendors %}
+      <tr>
+        <td><span class="badge text-bg-secondary">vendor</span></td>
+        <td>{{ it.title }}</td>
+        <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">link</a>{% endif %}</td>
+        <td class="text-muted small">{{ it.notes }}</td>
+        <td>
+          <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-muted">No vendors yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

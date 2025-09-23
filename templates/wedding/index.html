@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Wedding — Workspace{% endblock %}
+
+{% block head %}
+<link href="{{ url_for('static', filename='css/wedding.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!-- Panel Menu (fixed under navbar) -->
+<div id="panel-menu" class="w-menu-bar">
+  <div class="container d-flex flex-wrap gap-2 align-items-center py-2">
+    <div class="fw-semibold me-2">Panel Menu</div>
+    <!-- Smaller, sleeker buttons – note: only data-kind (no side) -->
+    <button class="btn pm-btn" data-kind="boards"><i class="bi bi-images me-1"></i>Boards</button>
+    <button class="btn pm-btn" data-kind="links"><i class="bi bi-link-45deg me-1"></i>Links</button>
+    <button class="btn pm-btn" data-kind="venues"><i class="bi bi-geo-alt me-1"></i>Venues & Vendors</button>
+    <button class="btn pm-btn" data-kind="ideas"><i class="bi bi-lightbulb me-1"></i>Quick Ideas</button>
+    <button class="btn pm-btn" data-kind="ceremony"><i class="bi bi-journal-richtext me-1"></i>Ceremony</button>
+    <button class="btn pm-btn" data-kind="reception"><i class="bi bi-card-checklist me-1"></i>Reception</button>
+    <button class="btn pm-btn" data-kind="tasks"><i class="bi bi-check2-square me-1"></i>Tasks</button>
+    <button class="btn pm-btn" data-kind="seating"><i class="bi bi-people me-1"></i>Seating</button>
+    <button class="btn pm-btn" data-kind="budget"><i class="bi bi-cash-coin me-1"></i>Budget</button>
+  </div>
+</div>
+
+<!-- Stage (just a spacer; panels are fixed) -->
+<div class="container">
+  <div class="w-stage-spacer"></div>
+</div>
+
+<!-- Left Panel -->
+<aside id="panel-left" class="w-panel left" aria-hidden="true">
+  <div class="w-head p-2 px-3 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi" id="pl-icon"></i>
+      <strong id="pl-title" class="me-2">Panel</strong>
+      <span class="muted small" id="pl-sub"></span>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" data-close="left"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="w-body" id="pl-body"></div>
+</aside>
+
+<!-- Right Panel -->
+<aside id="panel-right" class="w-panel right" aria-hidden="true">
+  <div class="w-head p-2 px-3 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi" id="pr-icon"></i>
+      <strong id="pr-title" class="me-2">Panel</strong>
+      <span class="muted small" id="pr-sub"></span>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" data-close="right"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="w-body" id="pr-body"></div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/wedding.js') }}" defer></script>
+{% endblock %}
