@@ -1,75 +1,115 @@
-<div class="mb-3">
-  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='rings') }}" enctype="multipart/form-data" data-panel-refresh>
-    <div class="col-12 col-md-3"><strong>Upload Rings</strong></div>
-    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
-    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
-  </form>
+{% set tabs = [
+("rings", "Rings", "bi-gem"),
+("cakes", "Cakes", "bi-cake2"),
+("photos", "Photo ideas", "bi-camera"),
+("bridesmaids", "Bridesmaids fits", "bi-person-heart"),
+("groomsmen", "Groomsmen fits", "bi-person-badge"),
+("aesthetic", "Wedding aesthetic", "bi-palette")
+] %}
+{% set title_map = {
+"rings":"Upload Rings",
+"cakes":"Upload Cakes",
+"photos":"Upload Photo Ideas",
+"bridesmaids":"Upload Bridesmaids Fits",
+"groomsmen":"Upload Groomsmen Fits",
+"aesthetic":"Upload Aesthetic"
+} %}
+{% set bucket_map = {
+"rings":"rings","cakes":"cakes","photos":"photos",
+"bridesmaids":"bridesmaids","groomsmen":"groomsmen","aesthetic":"aesthetic"
+} %}
+
+{% set current = (sub if sub is defined and sub else 'rings') %}
+
+{% if items is defined %}
+{% set gallery = items %}
+{% else %}
+{% if current == 'rings' %}
+{% set gallery = rings %}
+{% elif current == 'cakes' %}
+{% set gallery = cakes %}
+{% else %}
+{% set gallery = photos %}
+{% endif %}
+{% endif %}
+
+{% set ns = namespace(active_index=0) %}
+{% for key, label, icon in tabs %}
+{% if key == current %}{% set ns.active_index = loop.index0 %}{% endif %}
+{% endfor %}
+
+<!-- Stationary tab bar -->
+<div class="board-tabs" id="boardTabs" role="tablist"
+  style="--tab-count: {{ tabs|length }}; --active-index: {{ ns.active_index }};" data-current-sub="{{ current }}"
+  data-starred="{{ 1 if starred else 0 }}">
+  {% for key, label, icon in tabs %}
+  <button type="button" class="tab {% if current==key %}active{% endif %}" role="tab"
+    aria-selected="{{ 'true' if current==key else 'false' }}" data-board-sub="{{ key }}"
+    data-tab-index="{{ loop.index0 }}">
+    <span class="label"><i class="bi {{ icon }} me-1"></i>{{ label }}</span>
+  </button>
+  {% endfor %}
+  <span class="tab-indicator" aria-hidden="true"></span>
 </div>
 
-<div class="masonry">
-  {% for it in rings %}
-  <div class="m-item">
-    <div class="card shadow-sm">
-      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="ring">{% endif %}
-      <div class="card-body p-2 d-flex justify-content-between">
-        <small class="text-muted">{{ it.title }}</small>
-        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
-          <button class="btn btn-sm btn-outline-danger">×</button>
+<!-- Sliding content lives INSIDE this wrapper -->
+<div class="board-content">
+  <div class="d-flex justify-content-between align-items-center mb-2 boards-toolbar">
+    <div class="small text-muted">Viewing: <strong>{{ current|capitalize }}</strong></div>
+    <button type="button" class="btn btn-sm btn-outline-warning star-filter" data-star-toggle
+      aria-pressed="{{ 'true' if starred else 'false' }}">
+      <i class="bi {{ 'bi-star-fill' if starred else 'bi-star' }}"></i>
+      <span class="ms-1">Starred only</span>
+    </button>
+  </div>
+
+  <div class="mb-3">
+    <form class="row g-2 align-items-center" method="post"
+      action="{{ url_for('wedding_upload', bucket=bucket_map[current]) }}" enctype="multipart/form-data"
+      data-panel-refresh data-panel-refresh-params="sub={{ current }}&starred={{ 1 if starred else 0 }}">
+      <div class="col-12 col-md-3"><strong>{{ title_map[current] }}</strong></div>
+      <div class="col-12 col-md-7">
+        <input class="form-control" type="file" name="images" accept="image/*" multiple>
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-outline-primary">Upload</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="masonry">
+    {% for it in gallery %}
+    <div class="m-item">
+      <div class="card shadow-sm photo-card position-relative">
+        {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="{{ it.title or current }}">{% endif %}
+
+        <!-- STAR TOGGLE -->
+        <button type="button" class="btn-star-toggle {{ 'active' if it.is_starred else '' }}" data-star-id="{{ it.id }}"
+          aria-pressed="{{ 'true' if it.is_starred else 'false' }}" title="Favorite">
+          <i class="bi {{ 'bi-star-fill' if it.is_starred else 'bi-star' }}"></i>
+        </button>
+
+        <!-- DELETE -->
+        <form class="img-del-form" method="post" action="{{ url_for('wedding_item_delete', item_id=it.id) }}"
+          data-ajax-delete data-vanish-target=".m-item">
+          <button class="btn-img-del" title="Delete" aria-label="Delete">×</button>
         </form>
+
+        <form class="img-del-form" method="post" action="{{ url_for('wedding_item_delete', item_id=it.id) }}"
+          data-ajax-delete data-vanish-target=".m-item">
+          <button class="btn-img-del" title="Delete" aria-label="Delete">×</button>
+        </form>
+
+        <div class="card-body p-2 d-flex justify-content-between align-items-center">
+          <span class="img-label" data-editable-title data-id="{{ it.id }}">
+            {{ it.title or current|capitalize }}
+          </span>
+        </div>
       </div>
     </div>
+    {% else %}
+    <div class="text-muted small">No {{ current }} yet.</div>
+    {% endfor %}
   </div>
-  {% endfor %}
-</div>
 
-<hr class="my-4">
-
-<div class="mb-3">
-  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='cakes') }}" enctype="multipart/form-data" data-panel-refresh>
-    <div class="col-12 col-md-3"><strong>Upload Cakes</strong></div>
-    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
-    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
-  </form>
-</div>
-
-<div class="masonry">
-  {% for it in cakes %}
-  <div class="m-item">
-    <div class="card shadow-sm">
-      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="cake">{% endif %}
-      <div class="card-body p-2 d-flex justify-content-between">
-        <small class="text-muted">{{ it.title }}</small>
-        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
-          <button class="btn btn-sm btn-outline-danger">×</button>
-        </form>
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-<hr class="my-4">
-
-<div class="mb-3">
-  <form class="row g-2" method="post" action="{{ url_for('wedding_upload', bucket='photos') }}" enctype="multipart/form-data" data-panel-refresh data-panel-refresh>
-    <div class="col-12 col-md-3"><strong>Upload Photo Ideas</strong></div>
-    <div class="col-12 col-md-7"><input class="form-control" type="file" name="images" accept="image/*" multiple></div>
-    <div class="col-12 col-md-2 d-grid"><button class="btn btn-outline-primary">Upload</button></div>
-  </form>
-</div>
-
-<div class="masonry">
-  {% for it in photos %}
-  <div class="m-item">
-    <div class="card shadow-sm">
-      {% if it.image_path %}<img src="/u/{{ it.image_path }}" alt="photo">{% endif %}
-      <div class="card-body p-2 d-flex justify-content-between">
-        <small class="text-muted">{{ it.title }}</small>
-        <form method="post" action="{{ url_for('wedding_delete', item_id=it.id) }}" data-panel-refresh>
-          <button class="btn btn-sm btn-outline-danger">×</button>
-        </form>
-      </div>
-    </div>
-  </div>
-  {% endfor %}
 </div>

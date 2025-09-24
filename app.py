@@ -89,6 +89,17 @@ class HomeCard(db.Model):
     url = db.Column(db.String(200), nullable=False)
     sort_order = db.Column(db.Integer, default=0)
 
+class Chapter(db.Model):
+    __tablename__ = "item_chapter"
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("item.id", ondelete="CASCADE"), index=True, nullable=False)
+    number = db.Column(db.Integer, nullable=False)  # 1-based chapter number
+    title = db.Column(db.String(200))
+    source_path = db.Column(db.String(600), nullable=False)  # relative path under UPLOAD_ROOT
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint("item_id", "number", name="uq_item_chapter_number"),)
+
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False, index=True)
@@ -116,6 +127,14 @@ class Item(db.Model):
     cover_path = db.Column(db.String(600))       # original uploaded image path under /u
     cover_thumb_path = db.Column(db.String(600)) # jpg thumbnail for display
 
+    source_path = db.Column(db.String(600))
+    chapters = db.relationship(
+        "Chapter",
+        backref="item",
+        lazy="joined",           
+        order_by="Chapter.number",
+        cascade="all, delete-orphan",
+    )
     comments = db.relationship("ItemComment", backref="item", lazy=True, cascade="all, delete-orphan")
 
 class Trip(db.Model):
@@ -139,9 +158,10 @@ class WeddingItem(db.Model):
     url_ts = db.Column(db.Integer)
     image_path = db.Column(db.String(1024))
     tags = db.Column(db.String(255))
-    meta = db.Column(db.JSON, default=dict)           # <-- NEW: structured fields live here
+    meta = db.Column(db.JSON, default=dict)           
     created_by_user_id = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_starred = db.Column(db.Boolean, nullable=False, default=False)
 
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -235,6 +255,12 @@ with app.app_context():
         db.session.execute(text("ALTER TABLE wedding_item ADD COLUMN meta TEXT DEFAULT '{}'"))
         db.session.commit()
 
+    cols = [row[1] for row in db.session.execute(text("PRAGMA table_info(wedding_item)")).fetchall()]
+    if "is_starred" not in cols:
+        db.session.execute(text(
+            "ALTER TABLE wedding_item ADD COLUMN is_starred INTEGER NOT NULL DEFAULT 0"
+        ))
+        db.session.commit()
 
     # user table
     cols_user = [r[1] for r in db.session.execute(text("PRAGMA table_info(user)")).fetchall()]
@@ -284,6 +310,8 @@ with app.app_context():
         db.session.execute(text("ALTER TABLE item ADD COLUMN score INTEGER"))
     if "added_at" not in cols_item:
         db.session.execute(text("ALTER TABLE item ADD COLUMN added_at DATETIME"))
+    if "source_path" not in cols_item:
+        db.session.execute(text("ALTER TABLE item ADD COLUMN source_path TEXT"))
 
     # registration_request older versions
     cols_rr = [r[1] for r in db.session.execute(text("PRAGMA table_info(registration_request)")).fetchall()]
@@ -523,6 +551,63 @@ def save_item_cover(file_storage, item_id) -> tuple[str, str] | tuple[None, None
     rel_original = str(pathlib.Path("tracker") / str(item_id) / uniq)
     rel_thumb = str(pathlib.Path("tracker") / str(item_id) / "thumbs" / thumb_name)
     return rel_original, rel_thumb
+
+def _looks_like_pdf(first_bytes: bytes) -> bool:
+    # Most PDFs start with %PDF-
+    return first_bytes.startswith(b"%PDF-")
+
+def save_item_source(file_storage, item_id) -> str | None:
+    """Save a single 'source' file (PDF for now). Returns relative path or None."""
+    if not file_storage or not file_storage.filename:
+        return None
+
+    original = secure_filename(file_storage.filename)
+    ext = pathlib.Path(original).suffix.lower()
+
+    head = file_storage.stream.read(8); file_storage.stream.seek(0)
+    if ext != ".pdf" and not _looks_like_pdf(head):
+        return None
+
+    base_dir = pathlib.Path(app.config["UPLOAD_ROOT"]) / "tracker" / str(item_id) / "source"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # keep it predictable so re-uploads overwrite instead of piling up
+    dest = base_dir / "source.pdf"
+    file_storage.save(dest)
+
+    return str(pathlib.Path("tracker") / str(item_id) / "source" / "source.pdf")
+
+CHAPTER_DIRNAME = "chapters"
+
+def _infer_chapter_number(filename: str) -> int | None:
+    """
+    Try to pull a chapter number from a filename:
+    Picks the last integer group (e.g., 'MySeries_ch_012_extra.pdf' -> 12)
+    """
+    import re, os
+    base = os.path.splitext(os.path.basename(filename))[0].lower()
+    nums = re.findall(r"(\d+)", base)
+    if not nums:
+        return None
+    return int(nums[-1])
+
+def save_chapter_pdf(file_storage, item_id: int, chap_num: int) -> str:
+    """
+    Save chapter PDF to UPLOAD_ROOT/tracker/<item_id>/chapters/ch-XXX.pdf
+    Returns a relative path like 'tracker/42/chapters/ch-001.pdf'
+    """
+    original = secure_filename(file_storage.filename or "")
+    # verify it's a PDF by extension or header
+    head = file_storage.stream.read(5); file_storage.stream.seek(0)
+    if not (original.lower().endswith(".pdf") or head.startswith(b"%PDF-")):
+        raise ValueError("Not a PDF")
+    base = pathlib.Path(app.config["UPLOAD_ROOT"]) / "tracker" / str(item_id) / CHAPTER_DIRNAME
+    base.mkdir(parents=True, exist_ok=True)
+    dest = base / f"ch-{chap_num:03d}.pdf"
+    file_storage.save(dest)
+    rel = pathlib.Path("tracker") / str(item_id) / CHAPTER_DIRNAME / dest.name
+    return str(rel)
+
 
 def save_wedding_image(file_storage, bucket: str, item_id: int):
     """
@@ -991,11 +1076,36 @@ def tracker():
 
         # optional cover upload
         cover = request.files.get("cover")
+        chapter_files = request.files.getlist("chapters")
+        if chapter_files:
+            existing_max = db.session.query(func.coalesce(func.max(Chapter.number), 0)).filter_by(item_id=itm.id).scalar() or 0
+            next_num = existing_max + 1
+
+            for f in chapter_files:
+                if not f or not f.filename:
+                    continue
+                n = _infer_chapter_number(f.filename) or next_num
+                if n == next_num:
+                    next_num += 1
+
+                rel = save_chapter_pdf(f, itm.id, n)
+                ch = Chapter.query.filter_by(item_id=itm.id, number=n).first()
+                if ch:
+                    ch.source_path = rel  # replace existing chapter n
+                else:
+                    db.session.add(Chapter(item_id=itm.id, number=n, source_path=rel))
         if cover and cover.filename:
             rel, rel_thumb = save_item_cover(cover, itm.id)
             if rel and rel_thumb:
                 itm.cover_path = rel
                 itm.cover_thumb_path = rel_thumb
+        
+        source = request.files.get("source")
+        if source and source.filename:
+            rel_src = save_item_source(source, itm.id)
+            if rel_src:
+                itm.source_path = rel_src
+
 
         db.session.commit()
         return redirect(url_for("tracker", type=media_type) if media_type in MEDIA_TYPES else url_for("tracker"))
@@ -1099,15 +1209,78 @@ def tracker_update(item_id):
 
     # optional cover re-upload
     cover = request.files.get("cover")
+    # Multiple chapter PDFs (optional)
+    chapter_files = request.files.getlist("chapters")
+    if chapter_files:
+        existing_max = db.session.query(func.coalesce(func.max(Chapter.number), 0)).filter_by(item_id=item.id).scalar() or 0
+        next_num = existing_max + 1
+
+        for f in chapter_files:
+            if not f or not f.filename:
+                continue
+            n = _infer_chapter_number(f.filename) or next_num
+            if n == next_num:
+                next_num += 1
+
+            rel = save_chapter_pdf(f, item.id, n)
+            ch = Chapter.query.filter_by(item_id=item.id, number=n).first()
+            if ch:
+                ch.source_path = rel
+            else:
+                db.session.add(Chapter(item_id=item.id, number=n, source_path=rel))
+
     if cover and cover.filename:
         rel, rel_thumb = save_item_cover(cover, item.id)
         if rel and rel_thumb:
             item.cover_path = rel
             item.cover_thumb_path = rel_thumb
 
+    source = request.files.get("source")
+    if source and source.filename:
+        rel_src = save_item_source(source, item.id)
+        if rel_src:
+            item.source_path = rel_src
+
+    chapter_files = request.files.getlist("chapters")
+    if chapter_files:
+        existing_max = db.session.query(func.coalesce(func.max(Chapter.number), 0)).filter_by(item_id=item.id).scalar() or 0
+        next_num = existing_max + 1
+
+        for f in chapter_files:
+            if not f or not f.filename:
+                continue
+            n = _infer_chapter_number(f.filename) or next_num
+            if n == next_num:
+                next_num += 1
+
+            rel = save_chapter_pdf(f, item.id, n)
+            ch = Chapter.query.filter_by(item_id=item.id, number=n).first()
+            if ch:
+                ch.source_path = rel
+            else:
+                db.session.add(Chapter(item_id=item.id, number=n, source_path=rel))
+
+
     db.session.commit()
     flash(f"Updated '{item.title}'.", "success")
     return redirect(url_for("tracker", type=item.media_type) + f"#item{item.id}")
+
+@app.post("/tracker/<int:item_id>/chapter/<int:number>/delete")
+@login_required
+def delete_chapter(item_id, number):
+    ch = Chapter.query.filter_by(item_id=item_id, number=number).first_or_404()
+    db.session.delete(ch)
+    db.session.commit()
+    # keep modal open if called from inside it
+    if request.headers.get("X-Requested-With") == "fetch" or request.form.get("ajax"):
+        return ("", 204)
+    return redirect(url_for("tracker", type=request.args.get("type", "book")))
+
+@app.get("/tracker/<int:item_id>/chapters.json")
+@login_required
+def list_chapters(item_id):
+    q = Chapter.query.filter_by(item_id=item_id).order_by(Chapter.number).all()
+    return jsonify([{"n": c.number, "url": f"/u/{c.source_path}", "title": c.title or f"Chapter {c.number}"} for c in q])
 
 # Item comments
 @app.post("/tracker/<int:item_id>/comment")
@@ -1443,10 +1616,36 @@ def wedding_panel():
         return render_template("wedding/panel_links.html", items=items)
 
     if kind == "boards":
-        rings = WeddingItem.query.filter_by(kind="ring").order_by(WeddingItem.created_at.desc()).all()
-        cakes = WeddingItem.query.filter_by(kind="cake").order_by(WeddingItem.created_at.desc()).all()
-        photos = WeddingItem.query.filter_by(kind="photo").order_by(WeddingItem.created_at.desc()).all()
-        return render_template("wedding/panel_boards.html", rings=rings, cakes=cakes, photos=photos)
+        # which sub-board and whether to show only favorites
+        sub = request.args.get("sub") or "rings"
+        starred_only = (request.args.get("starred") in ("1", "true", "on"))
+
+        kind_map = {
+            "rings": "ring",
+            "cakes": "cake",
+            "photos": "photo",
+            "bridesmaids": "bridesmaid",
+            "groomsmen": "groomsman",
+            "aesthetic": "aesthetic",
+        }
+
+        q = WeddingItem.query.filter_by(
+            kind=kind_map.get(sub, "ring")
+        ).order_by(WeddingItem.id.desc())
+
+        if starred_only:
+            q = q.filter(WeddingItem.is_starred.is_(True))
+
+        items = q.all()
+
+        return render_template(
+            "wedding/panel_boards.html",
+            sub=sub,
+            items=items,
+            starred=starred_only,
+        )
+
+
 
     if kind == "venues":
         venues = WeddingItem.query.filter_by(kind="venue").order_by(WeddingItem.title.asc()).all()
@@ -1479,6 +1678,16 @@ def wedding_panel():
 
     return ("Unknown panel", 400)
 
+@app.post("/wedding/item/<int:item_id>/title")
+@login_required
+@admin_required
+def wedding_item_title(item_id):
+    it = WeddingItem.query.get_or_404(item_id)
+    title = (request.form.get("title") or "").strip()
+    it.title = title or it.title
+    db.session.commit()
+    return ("", 204)
+
 @app.post("/wedding/seating/table/add")
 @login_required
 @admin_required
@@ -1489,6 +1698,22 @@ def seating_table_add():
     db.session.add(t); db.session.commit()
     flash("Table added.", "success")
     return redirect(url_for("wedding_index"))
+
+@app.post("/wedding/item/<int:item_id>/star")
+@login_required
+@admin_required
+def wedding_item_star(item_id):
+    it = WeddingItem.query.get_or_404(item_id)
+    # Toggle unless explicit "on" is provided
+    raw = (request.form.get("on") or request.args.get("on") or "").lower()
+    if raw in ("1","true","on","yes"):
+        it.is_starred = True
+    elif raw in ("0","false","off","no"):
+        it.is_starred = False
+    else:
+        it.is_starred = not bool(it.is_starred)
+    db.session.commit()
+    return jsonify(ok=True, starred=bool(it.is_starred))
 
 @app.post("/wedding/seating/guest/add")
 @login_required
@@ -1648,24 +1873,67 @@ def budget_add():
 @login_required
 @admin_required
 def wedding_upload(bucket):
-    if bucket not in ("rings","cakes","photos"):
+    # allow all Boards buckets
+    allowed = {"rings", "cakes", "photos", "bridesmaids", "groomsmen", "aesthetic"}
+    if bucket not in allowed:
         abort(400)
-    files = request.files.getlist("images")
+
+    # map bucket -> WeddingItem.kind (DB)
+    kind_map = {
+        "rings": "ring",
+        "cakes": "cake",
+        "photos": "photo",
+        "bridesmaids": "bridesmaid",
+        "groomsmen": "groomsman",
+        "aesthetic": "aesthetic",
+    }
+    default_title = {
+        "rings": "Ring",
+        "cakes": "Cake",
+        "photos": "Photo",
+        "bridesmaids": "Bridesmaid fit",
+        "groomsmen": "Groomsman fit",
+        "aesthetic": "Aesthetic",
+    }
+
+    files = request.files.getlist("images") or []
     saved = 0
-    for f in files or []:
-        it = WeddingItem(kind=bucket[:-1] if bucket != "photos" else "photo",  # ring/cake/photo
-                         title=(request.form.get("title") or "").strip() or bucket[:-1].title(),
-                         created_by_user_id=session.get("user_id"))
-        db.session.add(it); db.session.flush()
+
+    for f in files:
+        if not f or not f.filename:
+            continue
+
+        it = WeddingItem(
+            kind=kind_map[bucket],
+            title=(request.form.get("title") or "").strip() or default_title[bucket],
+            created_by_user_id=session.get("user_id"),
+        )
+        db.session.add(it)
+        db.session.flush()  # need id for file path
+
         rel, thumb = save_wedding_image(f, bucket, it.id)
         if rel and thumb:
-            it.image_path = thumb  # store thumb for grid; original is available via predictable path
+            # store the thumb path for grid display
+            it.image_path = thumb
             saved += 1
         else:
+            # clean up if the file wasn’t a valid image
             db.session.delete(it)
+
     db.session.commit()
-    flash(f"Uploaded {saved} image(s) to {bucket}.", "success" if saved else "warning")
-    return redirect(url_for("wedding_index"))
+    # flash(f"Uploaded {saved} image(s) to {bucket}.", "success" if saved else "warning")
+    # fetch() in the panel ignores the response body; redirect is fine
+    # return redirect(url_for("wedding_index"))
+    return ("", 204)
+
+@app.post("/wedding/item/<int:item_id>/delete")
+@login_required
+@admin_required
+def wedding_item_delete(item_id):
+    it = WeddingItem.query.get_or_404(item_id)
+    db.session.delete(it)
+    db.session.commit()
+    return ("", 204)
 
 @app.post("/wedding/vendor")
 @login_required

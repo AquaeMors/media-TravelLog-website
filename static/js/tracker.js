@@ -3,7 +3,7 @@
   'use strict';
 
   // ---------- Tiny helpers ----------
-  const $  = (sel, root = document) => root.querySelector(sel);
+  const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
   // ---------- Re-open a modal if we asked to keep it open ----------
@@ -26,33 +26,44 @@
 
   // ---------- Field visibility (per media type) ----------
   const FIELD_GROUPS = {
-    chapters:       ['book','manga','manhwa'],
-    seasons:        ['show','anime'],
-    year:           ['movie','game'],
-    runtime:        ['movie'],
-    platforms:      ['game'],
-    release_status: ['book','manga','manhwa','show','anime'],
+    chapters: ['book', 'manga', 'manhwa'],
+    seasons: ['show', 'anime'],
+    year: ['movie', 'game'],
+    runtime: ['movie'],
+    platforms: ['game'],
+    release_status: ['book', 'manga', 'manhwa', 'show', 'anime'],
   };
 
-  function showFieldsForType(type, container){
-    Object.entries(FIELD_GROUPS).forEach(([field, types])=>{
-      container.querySelectorAll(`[data-field="${field}"]`).forEach(el=>{
+  function showFieldsForType(type, container) {
+    Object.entries(FIELD_GROUPS).forEach(([field, types]) => {
+      container.querySelectorAll(`[data-field="${field}"]`).forEach(el => {
         el.classList.toggle('d-none', !types.includes(type));
       });
     });
   }
 
-  function initScoped(form){
+  function initScoped(form) {
     const typeSel = form.querySelector('select[name="media_type"]');
     if (!typeSel) return;
     const container = form;
-    const apply = ()=> showFieldsForType((typeSel.value || '').toLowerCase(), container);
+    const sourceInput = form.querySelector('input[name="source"]');
+    const SOURCE_ACCEPT = {
+      // future: book/manga: 'application/pdf,.pdf'; game: '.zip,application/zip' etc.
+      default: 'application/pdf,.pdf'
+    };
+    const apply = () => {
+      const t = (typeSel.value || '').toLowerCase();
+      showFieldsForType(t, container);
+      if (sourceInput) {
+        sourceInput.setAttribute('accept', SOURCE_ACCEPT[t] || SOURCE_ACCEPT.default);
+      }
+    };
     typeSel.addEventListener('change', apply);
     apply(); // initial
   }
 
   // Initialize forms in both "New" and "Edit" modals
-  document.addEventListener('shown.bs.modal', (e)=>{
+  document.addEventListener('shown.bs.modal', (e) => {
     const form = e.target.querySelector('form');
     if (form) initScoped(form);
   });
@@ -66,9 +77,9 @@
     const list = modal.querySelector('.comments-scroll');
     if (!list) return;
     const cards = Array.from(list.querySelectorAll('.comment-card'));
-    const btn   = list.querySelector('.btn-load-more');
+    const btn = list.querySelector('.btn-load-more');
     const initial = parseInt(list.dataset.initial || '2', 10);
-    const step    = parseInt(btn?.dataset.step || '5', 10);
+    const step = parseInt(btn?.dataset.step || '5', 10);
 
     if (!cards.length) { if (btn) btn.classList.add('d-none'); return; }
 
@@ -394,18 +405,18 @@
 })();
 
 // --- Compact-on-scroll for the Panel Menu ---
-(function(){
+(function () {
   const menuBar = document.getElementById('panel-menu');
   if (!menuBar) return;
 
   let lastIsCompact = false;
   let ticking = false;
 
-  function onScroll(){
+  function onScroll() {
     if (ticking) return;
-    window.requestAnimationFrame(()=>{
+    window.requestAnimationFrame(() => {
       const isCompact = window.scrollY > 6;   // tweak threshold if you like
-      if (isCompact !== lastIsCompact){
+      if (isCompact !== lastIsCompact) {
         menuBar.classList.toggle('compact', isCompact);
         // Recalculate its height so panels sit exactly below it
         if (typeof measureMenu === 'function') measureMenu();
@@ -419,4 +430,60 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   // run once at start
   onScroll();
+})();
+
+// --- Chapter Reader (fullscreen iframe with Prev/Next) ---
+(function () {
+  const readerEl   = document.getElementById('readerModal');
+  if (!readerEl) return;
+
+  const frame      = document.getElementById('readerFrame');
+  const prevBtn    = document.getElementById('readerPrev');
+  const nextBtn    = document.getElementById('readerNext');
+  const select     = document.getElementById('readerSelect');
+
+  let chapters = [];   // [{n, url, title}]
+  let idx = 0;         // index into chapters
+
+  function loadIndex(i) {
+    if (!chapters.length) return;
+    idx = Math.max(0, Math.min(i, chapters.length - 1));
+    const ch = chapters[idx];
+    frame.src = ch.url;  // browser PDF viewer; swap to PDF.js viewer later if you prefer
+    // rebuild dropdown if needed
+    select.innerHTML = chapters.map((c, i) =>
+      `<option value="${i}" ${i===idx?'selected':''}>${c.title || ('Chapter '+c.n)}</option>`
+    ).join('');
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === chapters.length - 1;
+  }
+
+  // Open reader from any item modal chip/button
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-open-reader]');
+    if (!a) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const itemId = a.getAttribute('data-item');
+    const chNum  = parseInt(a.getAttribute('data-ch') || '1', 10);
+
+    const itemModal = document.getElementById(`item${itemId}`);
+    try {
+      chapters = JSON.parse(itemModal?.getAttribute('data-chapters') || '[]') || [];
+    } catch {
+      chapters = [];
+    }
+    if (!chapters.length) return;
+
+    // find index by chapter number (fallback to 0)
+    const startIdx = Math.max(0, chapters.findIndex(c => c.n === chNum));
+    loadIndex(startIdx);
+
+    if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(readerEl).show();
+  });
+
+  prevBtn.addEventListener('click', () => loadIndex(idx - 1));
+  nextBtn.addEventListener('click', () => loadIndex(idx + 1));
+  select.addEventListener('change', (e) => loadIndex(parseInt(e.target.value, 10)));
 })();

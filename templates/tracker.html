@@ -13,8 +13,8 @@
   </div>
 
   {% set ICONS = {
-    'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
-    'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
   } %}
 
   <div class="row g-3">
@@ -57,429 +57,535 @@
 
   {# Media type pills #}
   {% set ICONS = {
-    'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
-    'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
+  'book': 'book', 'movie': 'film', 'show': 'tv', 'anime': 'collection-play',
+  'manga': 'journals', 'manhwa': 'journals', 'game': 'controller', 'other': 'list'
   } %}
   <nav class="type-pills mb-3">
     {% for t in MEDIA_TYPES %}
-      <a class="pill{% if t==type_filter %} active{% endif %}"
-         href="/tracker?type={{ t }}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}">
-        <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
-        <span class="text-capitalize">{{ t }}</span>
-      </a>
+    <a class="pill{% if t==type_filter %} active{% endif %}"
+      href="/tracker?type={{ t }}{% for tt in tags %}&tag={{ tt|urlencode }}{% endfor %}">
+      <i class="bi bi-{{ ICONS.get(t,'list') }}"></i>
+      <span class="text-capitalize">{{ t }}</span>
+    </a>
     {% endfor %}
   </nav>
 
   {# Filters (q only) — keep as a real <form> for progressive enhancement #}
-  <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-2" method="get">
-    <input type="hidden" name="type" value="{{ type_filter }}">
-    {# include current tags so a manual submit preserves them #}
-    {% for tt in tags %}
+    <form id="filterForm" class="row gy-2 gx-2 align-items-center mb-2" method="get">
+      <input type="hidden" name="type" value="{{ type_filter }}">
+      {# include current tags so a manual submit preserves them #}
+      {% for tt in tags %}
       <input type="hidden" name="tag" value="{{ tt }}">
-    {% endfor %}
-    <div class="col-auto">
-      <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
-             placeholder="Search title/tags/notes">
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-outline-primary btn-sm">Filter</button>
-    </div>
-  </form>
+      {% endfor %}
+      <div class="col-auto">
+        <input class="form-control form-control-sm w-18rem" type="search" name="q" value="{{ q }}"
+          placeholder="Search title/tags/notes">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-primary btn-sm">Filter</button>
+      </div>
+    </form>
 
-  {# Active tag chips: JS will manage these dynamically.
-     We also server-render the current chips for no-JS fallback. #}
-  <div id="activeTags" class="d-flex flex-wrap gap-2 mb-3">
-    {% for tt in tags %}
+    {# Active tag chips: JS will manage these dynamically.
+    We also server-render the current chips for no-JS fallback. #}
+    <div id="activeTags" class="d-flex flex-wrap gap-2 mb-3">
+      {% for tt in tags %}
       <a class="pill active" data-remove-tag="{{ tt }}"
-         href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for t2 in tags if t2!=tt %}&tag={{ t2|urlencode }}{% endfor %}">
+        href="{{ url_for('tracker') }}?type={{ type_filter }}{% if q %}&q={{ q|urlencode }}{% endif %}{% for t2 in tags if t2!=tt %}&tag={{ t2|urlencode }}{% endfor %}">
         {{ tt }} <i class="bi bi-x-lg ms-1"></i>
       </a>
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
 
-  <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Title</th>
-          {% if type_filter in ['book','manga','manhwa'] %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Title</th>
+            {% if type_filter in ['book','manga','manhwa'] %}
             <th>Chapters</th>
-          {% elif type_filter in ['show','anime'] %}
+            {% elif type_filter in ['show','anime'] %}
             <th>Seasons</th>
-          {% endif %}
-          <th>Tags</th>
-          <th style="width:1%;">Actions</th>
-        </tr>
-      </thead>
+            {% endif %}
+            <th>Tags</th>
+            <th style="width:1%;">Actions</th>
+          </tr>
+        </thead>
 
-      <tbody id="tracker-tbody">
-        {% include '_tracker_rows.html' %}
-      </tbody>
+        <tbody id="tracker-tbody">
+          {% include '_tracker_rows.html' %}
+        </tbody>
 
-    </table>
-  </div>
+      </table>
+    </div>
 
-  <!-- New Item Modal -->
-  <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
-      <div class="modal-content">
-        <form method="post" action="/tracker" enctype="multipart/form-data">
+    <div class="modal fade" id="readerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Add New <span class="text-capitalize">{{ type_filter }}</span></h5>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-outline-secondary btn-sm" id="readerPrev">Prev</button>
+              <select class="form-select form-select-sm" id="readerSelect" style="min-width: 160px"></select>
+              <button class="btn btn-outline-secondary btn-sm" id="readerNext">Next</button>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0">
+            <iframe id="readerFrame" title="Chapter" style="border:0;width:100%;height:100%;"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Item Modal -->
+    <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+        <div class="modal-content">
+          <form method="post" action="/tracker" enctype="multipart/form-data">
+            <div class="modal-header">
+              <h5 class="modal-title">Add New <span class="text-capitalize">{{ type_filter }}</span></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control" required>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Type</label>
+                  <select id="add-media-type" name="media_type" class="form-select" data-faux-select>
+                    {% for t in MEDIA_TYPES %}
+                    <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- Cover -->
+                <div class="col-12">
+                  <label class="form-label">Upload cover</label>
+                  <input type="file" name="cover" class="form-control" accept="image/*">
+                  <div class="form-text">PNG/JPG/WebP. We’ll thumbnail automatically.</div>
+                </div>
+
+                <!-- Source file -->
+                <!-- <div class="col-12">
+                  <label class="form-label">Upload source (optional)</label>
+                  <input type="file" name="source" class="form-control" accept="application/pdf,.pdf">
+                  <div class="form-text">PDF only for now.</div>
+                </div> -->
+
+                <!-- Chapters (multiple PDFs) -->
+                <div class="col-12">
+                  <label class="form-label">Upload chapters (optional)</label>
+                  <input type="file" name="chapters" class="form-control" accept="application/pdf,.pdf" multiple>
+                  <div class="form-text">You can select multiple PDFs. We’ll infer chapter numbers from filenames like
+                    “ch012” or “012”.</div>
+                </div>
+
+                <!-- Chapters (books/manga/manhwa) -->
+                <div class="col-md-4" data-field="chapters">
+                  <label class="form-label">Total chapters</label>
+                  <input type="number" min="0" name="chapter_total" class="form-control" placeholder="e.g. 120">
+                </div>
+
+                <!-- Seasons (shows/anime) -->
+                <div class="col-md-4 d-none" data-field="seasons">
+                  <label class="form-label">Seasons</label>
+                  <input type="number" min="0" name="seasons" class="form-control" placeholder="e.g. 3">
+                </div>
+
+                <!-- Movie specifics -->
+                <div class="col-md-4 d-none" data-field="year">
+                  <label class="form-label">Year</label>
+                  <input type="number" min="1800" max="2100" name="year" class="form-control">
+                </div>
+                <div class="col-md-4 d-none" data-field="runtime">
+                  <label class="form-label">Runtime (mins)</label>
+                  <input type="number" min="0" name="runtime_mins" class="form-control">
+                </div>
+
+                <!-- Game specifics -->
+                <div class="col-md-6 d-none" data-field="platforms">
+                  <label class="form-label">Platform(s)</label>
+                  <input name="platforms" class="form-control" placeholder="PC, Switch, PS5…">
+                </div>
+
+                <!-- Optional release status -->
+                <div class="col-md-6" data-field="release_status">
+                  <label class="form-label">Release status (optional)</label>
+                  <select name="release_status" class="form-select" data-faux-select>
+                    <option value="">—</option>
+                    <option>Ongoing</option>
+                    <option>Completed</option>
+                    <option>Hiatus</option>
+                    <option>Canceled</option>
+                  </select>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Tags/Genres</label>
+                  <input name="tags" class="form-control" placeholder="Comma-separated">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Notes (optional)</label>
+                  <textarea name="notes" class="form-control" rows="3"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary">Add</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Detail + Edit Modals -->
+    {% for r in rows %}
+    {# Build a chapters payload for this item #}
+    {% set chs = namespace(data=[]) %}
+    {% for ch in r.chapters %}
+    {% set _ = chs.data.append({
+    'n': ch.number,
+    'url': '/u/' ~ ch.source_path,
+    'title': (ch.title or ('Chapter ' ~ ch.number))
+    }) %}
+    {% endfor %}
+
+    {# ITEM DETAIL MODAL — add data-chapters here #}
+    <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true"
+      data-chapters='{{ chs.data | tojson }}'>
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title">{{ r.title }}</h5>
+              <div class="text-muted small">
+                {{ r.media_type.title() }}{% if r.release_status %} • {{ r.release_status }}{% endif %}
+              </div>
+            </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
 
           <div class="modal-body">
-            <div class="row g-2">
+            <div class="row g-3 tracker-split">
               <div class="col-md-6">
-                <label class="form-label">Title</label>
-                <input name="title" class="form-control" required>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Type</label>
-                <select id="add-media-type" name="media_type" class="form-select" data-faux-select>
-                  {% for t in MEDIA_TYPES %}
-                    <option value="{{t}}" {% if t==type_filter %}selected{% endif %}>{{ t.title() }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <!-- Cover -->
-              <div class="col-12">
-                <label class="form-label">Upload cover</label>
-                <input type="file" name="cover" class="form-control" accept="image/*">
-                <div class="form-text">PNG/JPG/WebP. We’ll thumbnail automatically.</div>
-              </div>
-
-              <!-- Chapters (books/manga/manhwa) -->
-              <div class="col-md-4" data-field="chapters">
-                <label class="form-label">Total chapters</label>
-                <input type="number" min="0" name="chapter_total" class="form-control" placeholder="e.g. 120">
-              </div>
-
-              <!-- Seasons (shows/anime) -->
-              <div class="col-md-4 d-none" data-field="seasons">
-                <label class="form-label">Seasons</label>
-                <input type="number" min="0" name="seasons" class="form-control" placeholder="e.g. 3">
-              </div>
-
-              <!-- Movie specifics -->
-              <div class="col-md-4 d-none" data-field="year">
-                <label class="form-label">Year</label>
-                <input type="number" min="1800" max="2100" name="year" class="form-control">
-              </div>
-              <div class="col-md-4 d-none" data-field="runtime">
-                <label class="form-label">Runtime (mins)</label>
-                <input type="number" min="0" name="runtime_mins" class="form-control">
-              </div>
-
-              <!-- Game specifics -->
-              <div class="col-md-6 d-none" data-field="platforms">
-                <label class="form-label">Platform(s)</label>
-                <input name="platforms" class="form-control" placeholder="PC, Switch, PS5…">
-              </div>
-
-              <!-- Optional release status -->
-              <div class="col-md-6" data-field="release_status">
-                <label class="form-label">Release status (optional)</label>
-                <select name="release_status" class="form-select" data-faux-select>
-                  <option value="">—</option>
-                  <option>Ongoing</option>
-                  <option>Completed</option>
-                  <option>Hiatus</option>
-                  <option>Canceled</option>
-                </select>
-              </div>
-
-              <div class="col-12">
-                <label class="form-label">Tags/Genres</label>
-                <input name="tags" class="form-control" placeholder="Comma-separated">
-              </div>
-
-              <div class="col-12">
-                <label class="form-label">Notes (optional)</label>
-                <textarea name="notes" class="form-control" rows="3"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button class="btn btn-primary">Add</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Item Detail + Edit Modals -->
-  {% for r in rows %}
-  <div class="modal fade" id="item{{ r.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title">{{ r.title }}</h5>
-            <div class="text-muted small">
-              {{ r.media_type.title() }}{% if r.release_status %} • {{ r.release_status }}{% endif %}
-            </div>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-
-        <div class="modal-body">
-          <div class="row g-3 tracker-split">
-            <div class="col-md-6">
-              <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
-                <div class="card-body flex-grow-1 overflow-auto">
-                  {% if r.cover_thumb_path %}
-                  <div class="text-center mb-3">
-                    <img src="/u/{{ r.cover_thumb_path }}" alt="Cover" class="img-fluid rounded"
-                         style="max-height: 260px;">
-                  </div>
-                  {% endif %}
-                  <h6 class="text-muted">Details</h6>
-                  <dl class="row mb-0">
-                    {% if r.chapter_total is not none and r.media_type in ['book','manga','manhwa'] %}
+                <div class="card card-rounded h-100 d-flex flex-column overflow-hidden">
+                  <div class="card-body flex-grow-1 overflow-auto">
+                    {% if r.cover_thumb_path %}
+                    <div class="text-center mb-3">
+                      <img src="/u/{{ r.cover_thumb_path }}" alt="Cover" class="img-fluid rounded"
+                        style="max-height: 260px;">
+                    </div>
+                    {% endif %}
+                    <h6 class="text-muted">Details</h6>
+                    <dl class="row mb-0">
+                      {% if r.chapter_total is not none and r.media_type in ['book','manga','manhwa'] %}
                       <dt class="col-5">Chapters</dt>
                       <dd class="col-7">{{ r.chapter_total }}</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    {% if r.seasons is not none and r.media_type in ['show','anime'] %}
+                      {% if r.seasons is not none and r.media_type in ['show','anime'] %}
                       <dt class="col-5">Seasons</dt>
                       <dd class="col-7">{{ r.seasons }}</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    {% if r.release_status %}
+                      {% if r.release_status %}
                       <dt class="col-5">Release</dt>
                       <dd class="col-7">{{ r.release_status }}</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    {% if r.year %}
+                      {% if r.year %}
                       <dt class="col-5">Year</dt>
                       <dd class="col-7">{{ r.year }}</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    {% if r.runtime_mins %}
+                      {% if r.runtime_mins %}
                       <dt class="col-5">Runtime</dt>
                       <dd class="col-7">{{ r.runtime_mins }} min</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    {% if r.platforms %}
+                      {% if r.platforms %}
                       <dt class="col-5">Platforms</dt>
                       <dd class="col-7">{{ r.platforms }}</dd>
-                    {% endif %}
+                      {% endif %}
 
-                    <dt class="col-5">Tags</dt>
-                    <dd class="col-7">
-                      {% if r.tags %}
+                      {% if r.source_path %}
+                      <dt class="col-5">Source</dt>
+                      <dd class="col-7">
+                        <a href="/u/{{ r.source_path }}" class="link-primary" target="_blank" rel="noopener">
+                          <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+                        </a>
+                      </dd>
+                      {% endif %}
+
+                      <dt class="col-5">Tags</dt>
+                      <dd class="col-7">
+                        {% if r.tags %}
                         <div class="d-flex flex-wrap gap-1">
                           {% for tg in r.tags.split(',') %}
-                            {% set t = tg.strip() %}
-                            {% if t %}
-                              <a class="pill tag-pill"
-                                 data-add-tag="{{ t|lower }}"
-                                 href="{{ url_for('tracker') }}?type={{ r.media_type }}&tag={{ t|lower|urlencode }}">
-                                {{ t }}
-                              </a>
-                            {% endif %}
+                          {% set t = tg.strip() %}
+                          {% if t %}
+                          <a class="pill tag-pill" data-add-tag="{{ t|lower }}"
+                            href="{{ url_for('tracker') }}?type={{ r.media_type }}&tag={{ t|lower|urlencode }}">
+                            {{ t }}
+                          </a>
+                          {% endif %}
                           {% endfor %}
                         </div>
-                      {% else %}
+                        {% else %}
                         —
-                      {% endif %}
-                    </dd>
-                  </dl>
+                        {% endif %}
+                      </dd>
 
-                  {% if r.notes %}
+                      {% if r.chapters and r.media_type in ['manga','manhwa','book'] %}
+                      <dt class="col-5">Chapters</dt>
+                      <dd class="col-7">
+                        <div class="d-flex flex-wrap gap-1">
+                          {% for ch in r.chapters %}
+                          <a class="pill" data-row-ignore data-open-reader data-item="{{ r.id }}"
+                            data-ch="{{ ch.number }}" href="#">
+                            {{ ch.number }}
+                          </a>
+                          {% endfor %}
+                          <a class="pill" data-row-ignore data-open-reader data-item="{{ r.id }}"
+                            data-ch="{{ r.chapters[0].number }}" href="#">
+                            Read
+                          </a>
+                        </div>
+                      </dd>
+                      {% endif %}
+                    </dl>
+
+                    {% if r.notes %}
                     <hr>
                     <div><strong>Notes</strong>
                       <div class="mt-1">{{ r.notes }}</div>
                     </div>
-                  {% endif %}
+                    {% endif %}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="col-md-6">
-              <div class="card card-rounded h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                  <span>Comments</span>
-                  <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
-                </div>
-
-                <div class="card-body comments-panel">
-                  <div class="comments-ui sticky-top bg-white pb-2" style="top: -0.5rem;">
-                    <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment" data-keep-modal>
-                      <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username }}</strong></label>
-                      <textarea class="form-control" name="body" rows="3" maxlength="2000"
-                                placeholder="Share a thought…" required></textarea>
-                      <div class="d-flex justify-content-between align-items-center mt-2">
-                        <div class="comments-toolbar">
-                          <button type="button" class="btn-tool" title="Bold" disabled><i class="bi bi-type-bold"></i></button>
-                          <button type="button" class="btn-tool" title="Italic" disabled><i class="bi bi-type-italic"></i></button>
-                          <button type="button" class="btn-tool" title="Link" disabled><i class="bi bi-link-45deg"></i></button>
-                        </div>
-                        <button class="btn btn-sm btn-primary">Comment</button>
-                      </div>
-                    </form>
+              <div class="col-md-6">
+                <div class="card card-rounded h-100">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Comments</span>
+                    <span class="badge text-bg-secondary">{{ r.comments|length }}</span>
                   </div>
 
-                  <div class="comments-scroll" data-initial="2">
-                    {% if r.comments %}
+                  <div class="card-body comments-panel">
+                    <div class="comments-ui sticky-top bg-white pb-2" style="top: -0.5rem;">
+                      <form class="comments-composer" method="post" action="/tracker/{{ r.id }}/comment"
+                        data-keep-modal>
+                        <label class="form-label mb-1">Add a comment as <strong>{{ current_user.username
+                            }}</strong></label>
+                        <textarea class="form-control" name="body" rows="3" maxlength="2000"
+                          placeholder="Share a thought…" required></textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                          <div class="comments-toolbar">
+                            <button type="button" class="btn-tool" title="Bold" disabled><i
+                                class="bi bi-type-bold"></i></button>
+                            <button type="button" class="btn-tool" title="Italic" disabled><i
+                                class="bi bi-type-italic"></i></button>
+                            <button type="button" class="btn-tool" title="Link" disabled><i
+                                class="bi bi-link-45deg"></i></button>
+                          </div>
+                          <button class="btn btn-sm btn-primary">Comment</button>
+                        </div>
+                      </form>
+                    </div>
+
+                    <div class="comments-scroll" data-initial="2">
+                      {% if r.comments %}
                       {% for c in r.comments|sort(attribute='created_at', reverse=True) %}
-                        <article class="comment-card">
-                          <div class="d-flex justify-content-between">
-                            <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
-                            {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
-                              <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal
-                                    data-confirm="Delete this comment?">
-                                <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
-                              </form>
-                            {% endif %}
-                          </div>
+                      <article class="comment-card">
+                        <div class="d-flex justify-content-between">
+                          <div class="comment-meta"><span class="author">{{ c.author }}</span></div>
+                          {% if current_user and (current_user.id == c.user_id or current_user.can_approve_users) %}
+                          <form method="post" action="/tracker/comment/{{ c.id }}/delete" class="ms-2" data-keep-modal
+                            data-confirm="Delete this comment?">
+                            <button class="btn-delete" title="Delete"><i class="bi bi-x-lg"></i></button>
+                          </form>
+                          {% endif %}
+                        </div>
 
-                          <div class="comment-body mt-2">{{ c.body }}</div>
+                        <div class="comment-body mt-2">{{ c.body }}</div>
 
-                          <div class="comment-footer">
-                            <div class="d-flex gap-2">
-                              <button type="button" class="btn btn-react {{ 'has-count' if c.likes>0 }}"
-                                      data-react="like" data-kind="item" data-comment-id="{{ c.id }}"
-                                      aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
-                                <i class="bi bi-arrow-up"></i>
-                                <span class="count">{{ c.likes }}</span>
-                              </button>
-                              <button type="button" class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
-                                      data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
-                                      aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
-                                <i class="bi bi-arrow-down"></i>
-                                <span class="count">{{ c.dislikes }}</span>
-                              </button>
-                            </div>
-                            <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">
-                              {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}
-                            </span>
+                        <div class="comment-footer">
+                          <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-react {{ 'has-count' if c.likes>0 }}" data-react="like"
+                              data-kind="item" data-comment-id="{{ c.id }}"
+                              aria-pressed="{{ 'true' if c.user_reaction=='like' else 'false' }}">
+                              <i class="bi bi-arrow-up"></i>
+                              <span class="count">{{ c.likes }}</span>
+                            </button>
+                            <button type="button" class="btn btn-react {{ 'has-count' if c.dislikes>0 }}"
+                              data-react="dislike" data-kind="item" data-comment-id="{{ c.id }}"
+                              aria-pressed="{{ 'true' if c.user_reaction=='dislike' else 'false' }}">
+                              <i class="bi bi-arrow-down"></i>
+                              <span class="count">{{ c.dislikes }}</span>
+                            </button>
                           </div>
-                        </article>
+                          <span class="text-muted small" data-timeago="{{ c.created_at.isoformat() }}">
+                            {{ c.created_at.strftime('%Y-%m-%d %H:%M') }}
+                          </span>
+                        </div>
+                      </article>
                       {% endfor %}
 
                       <button type="button" class="btn btn-load-more w-100 mt-3" data-step="5">Load more</button>
-                    {% else %}
+                      {% else %}
                       <div class="text-muted">No comments yet.</div>
-                    {% endif %}
-                  </div><!-- /.comments-scroll -->
-                </div><!-- /.card-body -->
+                      {% endif %}
+                    </div><!-- /.comments-scroll -->
+                  </div><!-- /.card-body -->
+                </div>
               </div>
-            </div>
-          </div><!-- /row -->
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit Item Modal -->
-  <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
-      <div class="modal-content">
-        <form method="post" action="/tracker/{{ r.id }}/update" enctype="multipart/form-data">
-          <div class="modal-header">
-            <h5 class="modal-title">Edit: {{ r.title }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-
-          <div class="modal-body">
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label">Title</label>
-                <input name="title" class="form-control" value="{{ r.title }}" required>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">Type</label>
-                <select name="media_type" class="form-select js-type" data-faux-select>
-                  {% for t in MEDIA_TYPES %}
-                    <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <!-- Cover -->
-              <div class="col-12">
-                <label class="form-label">Upload cover</label>
-                <input type="file" name="cover" class="form-control" accept="image/*">
-              </div>
-
-              <!-- Chapters -->
-              <div class="col-md-4" data-field="chapters">
-                <label class="form-label">Total chapters</label>
-                <input type="number" min="0" name="chapter_total" class="form-control"
-                       value="{{ r.chapter_total if r.chapter_total is not none }}">
-              </div>
-
-              <!-- Seasons -->
-              <div class="col-md-4 d-none" data-field="seasons">
-                <label class="form-label">Seasons</label>
-                <input type="number" min="0" name="seasons" class="form-control"
-                       value="{{ r.seasons if r.seasons is not none }}">
-              </div>
-
-              <!-- Movie specifics -->
-              <div class="col-md-4 d-none" data-field="year">
-                <label class="form-label">Year</label>
-                <input type="number" min="1800" max="2100" name="year" class="form-control"
-                       value="{{ r.year if r.year is not none }}">
-              </div>
-              <div class="col-md-4 d-none" data-field="runtime">
-                <label class="form-label">Runtime (mins)</label>
-                <input type="number" min="0" name="runtime_mins" class="form-control"
-                       value="{{ r.runtime_mins if r.runtime_mins is not none }}">
-              </div>
-
-              <!-- Game specifics -->
-              <div class="col-md-6 d-none" data-field="platforms">
-                <label class="form-label">Platform(s)</label>
-                <input name="platforms" class="form-control" value="{{ r.platforms or '' }}">
-              </div>
-
-              <!-- Release status -->
-              <div class="col-md-6" data-field="release_status">
-                <label class="form-label">Release status (optional)</label>
-                <select name="release_status" class="form-select" data-faux-select>
-                  <option value="">—</option>
-                  <option {% if r.release_status=='Ongoing' %}selected{% endif %}>Ongoing</option>
-                  <option {% if r.release_status=='Completed' %}selected{% endif %}>Completed</option>
-                  <option {% if r.release_status=='Hiatus' %}selected{% endif %}>Hiatus</option>
-                  <option {% if r.release_status=='Canceled' %}selected{% endif %}>Canceled</option>
-                </select>
-              </div>
-
-              <div class="col-12">
-                <label class="form-label">Tags/Genres</label>
-                <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
-              </div>
-
-              <div class="col-12">
-                <label class="form-label">Notes (optional)</label>
-                <textarea name="notes" class="form-control" rows="3">{{ r.notes or '' }}</textarea>
-              </div>
-            </div>
+            </div><!-- /row -->
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button class="btn btn-primary">Save changes</button>
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
-  {% endfor %}
-  {% endif %}
+
+    <!-- Edit Item Modal -->
+    <div class="modal fade" id="itemEdit{{ r.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tracker-modal">
+        <div class="modal-content">
+          <form method="post" action="/tracker/{{ r.id }}/update" enctype="multipart/form-data">
+            <div class="modal-header">
+              <h5 class="modal-title">Edit: {{ r.title }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control" value="{{ r.title }}" required>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label">Type</label>
+                  <select name="media_type" class="form-select js-type" data-faux-select>
+                    {% for t in MEDIA_TYPES %}
+                    <option value="{{t}}" {% if t==r.media_type %}selected{% endif %}>{{ t.title() }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- Cover -->
+                <div class="col-12">
+                  <label class="form-label">Upload cover</label>
+                  <input type="file" name="cover" class="form-control" accept="image/*">
+                </div>
+
+                <!-- Source file -->
+                <!-- <div class="col-12">
+                  <label class="form-label">Upload source (optional)</label>
+                  <input type="file" name="source" class="form-control" accept="application/pdf,.pdf">
+                  <div class="form-text">PDF only for now (replaces existing if uploaded).</div>
+                </div> -->
+
+                <!-- Chapters (add/replace) -->
+                <div class="col-12">
+                  <label class="form-label">Upload chapters (optional)</label>
+                  <input type="file" name="chapters" class="form-control" accept="application/pdf,.pdf" multiple>
+                  <div class="form-text">Upload additional chapters or replacements. Existing numbers will be
+                    overwritten.</div>
+                </div>
+
+                {% if r.chapters %}
+                <div class="col-12">
+                  <div class="small text-muted mb-1">Existing chapters</div>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for ch in r.chapters %}
+                    <form method="post" action="/tracker/{{ r.id }}/chapter/{{ ch.number }}/delete" data-keep-modal
+                      data-confirm="Delete chapter {{ ch.number }}?">
+                      <button class="pill" type="submit"><span class="me-1">Ch {{ ch.number }}</span> <i
+                          class="bi bi-x-lg"></i></button>
+                    </form>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% endif %}
+
+                <!-- Chapters -->
+                <div class="col-md-4" data-field="chapters">
+                  <label class="form-label">Total chapters</label>
+                  <input type="number" min="0" name="chapter_total" class="form-control"
+                    value="{{ r.chapter_total if r.chapter_total is not none }}">
+                </div>
+
+                <!-- Seasons -->
+                <div class="col-md-4 d-none" data-field="seasons">
+                  <label class="form-label">Seasons</label>
+                  <input type="number" min="0" name="seasons" class="form-control"
+                    value="{{ r.seasons if r.seasons is not none }}">
+                </div>
+
+                <!-- Movie specifics -->
+                <div class="col-md-4 d-none" data-field="year">
+                  <label class="form-label">Year</label>
+                  <input type="number" min="1800" max="2100" name="year" class="form-control"
+                    value="{{ r.year if r.year is not none }}">
+                </div>
+                <div class="col-md-4 d-none" data-field="runtime">
+                  <label class="form-label">Runtime (mins)</label>
+                  <input type="number" min="0" name="runtime_mins" class="form-control"
+                    value="{{ r.runtime_mins if r.runtime_mins is not none }}">
+                </div>
+
+                <!-- Game specifics -->
+                <div class="col-md-6 d-none" data-field="platforms">
+                  <label class="form-label">Platform(s)</label>
+                  <input name="platforms" class="form-control" value="{{ r.platforms or '' }}">
+                </div>
+
+                <!-- Release status -->
+                <div class="col-md-6" data-field="release_status">
+                  <label class="form-label">Release status (optional)</label>
+                  <select name="release_status" class="form-select" data-faux-select>
+                    <option value="">—</option>
+                    <option {% if r.release_status=='Ongoing' %}selected{% endif %}>Ongoing</option>
+                    <option {% if r.release_status=='Completed' %}selected{% endif %}>Completed</option>
+                    <option {% if r.release_status=='Hiatus' %}selected{% endif %}>Hiatus</option>
+                    <option {% if r.release_status=='Canceled' %}selected{% endif %}>Canceled</option>
+                  </select>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Tags/Genres</label>
+                  <input name="tags" class="form-control" placeholder="Comma-separated" value="{{ r.tags or '' }}">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label">Notes (optional)</label>
+                  <textarea name="notes" class="form-control" rows="3">{{ r.notes or '' }}</textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary">Save changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
 
 </div>
 {% endblock %}
