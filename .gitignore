@@ -47,3 +47,4 @@ backups/
 .DS_Store
 Thumbs.db
 desktop.ini
+create_admin.py
